@@ -1,3 +1,6 @@
+#ifndef INPUT_PROCESSOR_H
+#define INPUT_PROCESSOR_H
+
 #include <nds.h>
 #include <stdio.h>
 
@@ -17,3 +20,5 @@ private:
   InputProcessor& operator=(const InputProcessor&)= delete;
 };
 InputProcessor * InputProcessor::instance = nullptr;
+
+#endif

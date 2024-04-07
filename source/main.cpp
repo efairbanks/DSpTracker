@@ -5,17 +5,17 @@
 
 #include "graphics.h"
 #include "sound.h"
+#include "sequencer.h"
 #include "input.h"
 
 touchPosition touchXY;
 int cursorX = 0;
 int cursorY = 0;
-char seq[23];
 
 void init() {
 	GraphicsEngine::getInstance()->Init();
 	SoundEngine::getInstance()->Init();
-	for(int i=0; i<23; i++) seq[i] = 0;
+	Sequencer::getInstance()->Init();
 }
 
 void handleInput() {
@@ -27,16 +27,16 @@ void handleInput() {
 	if(held & KEY_A) {
 		switch(keys) {
 			case KEY_DOWN:
-				seq[cursorY]--;
+				Sequencer::getInstance()->seq[cursorY]--;
 				break;
 			case KEY_UP:
-				seq[cursorY]++;
+				Sequencer::getInstance()->seq[cursorY]++;
 				break;
 			case KEY_LEFT:
-				seq[cursorY]-=16;
+				Sequencer::getInstance()->seq[cursorY]-=16;
 				break;
 			case KEY_RIGHT:
-				seq[cursorY]+=16;
+				Sequencer::getInstance()->seq[cursorY]+=16;
 				break;
 		}
 	} else {
@@ -53,14 +53,16 @@ void handleInput() {
 			case KEY_RIGHT:
 				cursorX++;
 				break;
+			case KEY_B:
+				SoundEngine::getInstance()->voice.PlayNote(220+rand()%200);
 		}
 	}
 }
 
 void drawScreen() {
 	iprintf("\x1b[0;0H");
-	for(int i=0; i<23; i++) {
-		iprintf("%2d %02X %02X %02X %02X %02X %02X %02X %02X %02X\n", i, seq[i], 0, 0, 0, 0, 0, 0, 0, 0);
+	for(int i=0; i<Sequencer::getInstance()->seq.size(); i++) {
+		iprintf("%2d %02X\n", i, Sequencer::getInstance()->seq[i]);
 	}
 
 	glBegin2D();
@@ -69,6 +71,10 @@ void drawScreen() {
 			16, SCREEN_HEIGHT-1-8,
 			RGB15(31,31,31));
 
+	glBoxFilled(19, Sequencer::getInstance()->seqIndex*8,
+				21, (Sequencer::getInstance()->seqIndex+1)*8-2,
+				RGB15(31,31,31));
+
 	glLine(	18 + cursorX*24+5, cursorY*8,
 			17 + cursorX*24+5, (cursorY+1)*8-2,
 			RGB15(31,31,31));
@@ -76,6 +82,8 @@ void drawScreen() {
 	glLine(	17 + (cursorX+1)*24-1, cursorY*8,
 			16 + (cursorX+1)*24-1, (cursorY+1)*8-2,
 			RGB15(31,31,31));
+
+
 
 	glEnd2D();
 	glFlush(0);

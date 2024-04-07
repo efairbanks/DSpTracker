@@ -1,3 +1,6 @@
+#ifndef GRAPHICS_ENGINE_H
+#define GRAPHICS_ENGINE_H
+
 #include <nds.h>
 #include <gl2d.h>
 #include <stdio.h>
@@ -37,3 +40,5 @@ private:
   GraphicsEngine& operator=(const GraphicsEngine&)= delete;
 };
 GraphicsEngine * GraphicsEngine::instance = nullptr;
+
+#endif
