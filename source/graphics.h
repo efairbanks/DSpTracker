@@ -31,6 +31,17 @@ public:
     }
     return instance;
   };
+  void DrawScope(s16* buffer, int length, u16 color) {
+    for(int i=0; i<length - 1; i++) {
+        s16 sample = buffer[i];
+        s16 nextSample = buffer[i+1];
+        glLine(
+            i*(SCREEN_WIDTH/length), (SCREEN_HEIGHT>>1) + ((sample*SCREEN_HEIGHT)>>13),
+            (i+1)*(SCREEN_WIDTH/length), (SCREEN_HEIGHT>>1) + ((nextSample*SCREEN_HEIGHT)>>13),
+            color
+        );
+    }
+  }
   ~GraphicsEngine() = default;
 private:
   static GraphicsEngine * instance;

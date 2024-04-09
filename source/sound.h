@@ -7,6 +7,7 @@
 #include <vector>
 
 #include "sequencer.h"
+#include "utils.h"
 
 #define SAMPLE_RATE 25000
 #define B32_1HZ_DELTA ((0xFFFFFFFF)/SAMPLE_RATE)
@@ -179,11 +180,77 @@ public:
     }
 };
 
+class Comb {
+public:
+    s16* buffer;
+    s16 coef;
+    int length;
+    int index;
+    Comb(int len=10, s16 c=-4000) {
+        length = len;
+        buffer = (s16*)malloc(sizeof(s16)*length);
+        coef = c;
+        index = 0;
+    }
+    ~Comb() { free(buffer); }
+    s16 Process(s16 in, s16 phase=0) {
+        int i = wrap(index+1, length);
+        s16 out = in + ((buffer[i]*coef)>>12);
+        buffer[wrap(i+phase, length)] = out;
+        index=wrap(index+1, length);
+        return out;
+    }
+};
+
+class Allpass {
+public:
+    Comb* a;
+    Comb* b;
+    Allpass(int len=10, s16 c=-4000) {
+        a = new Comb(len, c);
+        b = new Comb(len, -c);
+    }
+    //~Allpass() { destroy a; destroy b; }
+    s16 Process(s16 in, s16 phase=0) {
+        return a->Process(b->Process(in, phase), phase);
+    }
+};
+
+class BrownNoise {
+    s32 phase;
+    s16 delta;
+public:
+    BrownNoise(s32 d=11) {
+        phase = 0;
+        delta = d;
+    }
+    s16 Process() {
+        phase += rand()&0x1 ? delta : -delta;
+        if(phase >= 0x7FFF) phase -= delta;
+        if(phase <= -0x7FFF) phase += delta;
+        return phase;
+    }
+};
+
+class Lowpass {
+public:
+    s32 last;
+    Lowpass() {}
+    s16 Process(s32 in, s16 coef=16) {
+        in = in<<8;
+        last = ((in*coef)>>8) + (last*((1<<8)-coef)>>8);
+        return last>>8;
+    }
+};
+
 class SoundEngine {
 public:
     static SoundEngine * getInstance() {
         if(nullptr == instance) {
             instance = new SoundEngine();
+            instance->allpass = new Allpass(400, -4020);
+            instance->lfo.SetFreq(B32_1HZ_DELTA>>8);
+
             // initialize maxmod without any soundbank (unusual setup)
             mm_ds_system sys;
             sys.mod_count 			= 0;
@@ -207,6 +274,10 @@ public:
     Voice voices[3];
     Metro metro;
     Scope scope;
+    Allpass* allpass;
+    BrownNoise noise;
+    Lowpass lowpass;
+    SinOsc lfo;
     s16 Process() {
         if(metro.Process()) {
             Sequencer* sequencer = Sequencer::getInstance();
@@ -214,18 +285,21 @@ public:
                 sequencer->sequence.columns[i].Increment();
                 Row row = sequencer->sequence.columns[i].GetRow();
                 if(row.key > 0) {
-                    switch(row.key+64) {
-                        case 'A':
+                    switch(Row::KeyToChar(row.key)) {
+                        case 'N':
                             voices[0].PlayNote(row.value*8);
                             break;
-                        case 'B':
+                        case 'E':
                             voices[0].line.delta = (B32_1HZ_DELTA*8*row.value)>>4;
                             break;
-                        case 'C':
+                        case 'F':
                             voices[0].modFreqCoef = row.value;
                             break;
-                        case 'D':
+                        case 'M':
                             voices[0].modAmount = row.value;
+                            break;
+                        case 'T':
+                            metro.delta = B32_1HZ_DELTA*(row.value+1);
                             break;
                     }
                 } 
@@ -233,6 +307,9 @@ public:
         }
         s16 out = 0;
         for(int i=0; i<3; i++) out += voices[i].Process();
+        s16 nse = noise.Process();
+        s16 verb = allpass->Process(out>>2, 0);
+        out += lowpass.Process(verb);
         scope.Process(out);
         return out;
     }

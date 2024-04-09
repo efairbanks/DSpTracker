@@ -93,17 +93,6 @@ void handleInput() {
 	}
 }
 
-char keyToChar(int key) {
-	switch(key) {
-		case 0:
-			return '-';
-			break;
-		default:
-			return key+64;
-			break;
-	}
-}
-
 void drawScreen() {
 	for(int columnIndex=0; columnIndex<sequencer->sequence.columns.size(); columnIndex++) {
 		Column column = sequencer->sequence.columns[columnIndex];
@@ -112,7 +101,7 @@ void drawScreen() {
 		for(int rowIndex=0; rowIndex<23; rowIndex++) {
 			if(rowIndex<column.rows.size()) {
 				iprintf("\x1b[%d;%dH%2d", rowIndex, 0, rowIndex);
-				iprintf("\x1b[%d;%dH%1c%02X \n", rowIndex, columnIndex*4+3, keyToChar(column.rows[rowIndex].key), column.rows[rowIndex].value);
+				iprintf("\x1b[%d;%dH%1c%02X \n", rowIndex, columnIndex*4+3, Row::KeyToChar(column.rows[rowIndex].key), column.rows[rowIndex].value);
 				maxRowIndex = std::max(maxRowIndex, rowIndex);
 			} else {
 				iprintf("\x1b[%d;%dH    \n", rowIndex, columnIndex*4+3);
@@ -122,15 +111,7 @@ void drawScreen() {
 
 	glBegin2D();
 
-	for(int i=0; i<soundEngine->scope.length - 1; i++) {
-		s16 sample = soundEngine->scope.buffer[i];
-		s16 nextSample = soundEngine->scope.buffer[i+1];
-		glLine(
-			i*(SCREEN_WIDTH/soundEngine->scope.length), (SCREEN_HEIGHT>>1) + ((sample*SCREEN_HEIGHT)>>13),
-			(i+1)*(SCREEN_WIDTH/soundEngine->scope.length), (SCREEN_HEIGHT>>1) + ((nextSample*SCREEN_HEIGHT)>>13),
-			RGB15(20,20,31)
-		);
-	}
+	graphicsEngine->DrawScope(soundEngine->scope.buffer, soundEngine->scope.length, RGB15(20,20,31));
 	if(soundEngine->scope.IsReady()) soundEngine->scope.Reset();
 
 	glLine(	17, 0,

@@ -25,6 +25,34 @@ typedef enum {
 
 class Row {
 public:
+    static char KeyToChar(int key) {
+        switch(key) {
+            case 0:
+                return '-';
+                break;
+            case 1:
+                return 'N';
+                break;
+            case 2:
+                return 'I';
+                break;
+            case 3:
+                return 'E';
+                break;
+            case 4:
+                return 'M';
+                break;
+            case 5:
+                return 'F';
+                break;
+            case 6:
+                return 'T';
+                break;
+            default:
+                return '?';
+                break;
+        }
+    }
     u8 key;
     u8 value;
     Row() {
@@ -58,11 +86,13 @@ class Sequence {
 public:
     vector<Column> columns;
     Sequence() {
-        columns.push_back(Column(COLUMN_NOTE, 16));
-        columns.push_back(Column(COLUMN_EFFECT, 16));
-        columns.push_back(Column(COLUMN_EFFECT, 16));
+        columns.push_back(Column(COLUMN_NOTE, 1));
+        columns.push_back(Column(COLUMN_EFFECT, 1));
+        columns.push_back(Column(COLUMN_EFFECT, 1));
     }
 };
+
+
 
 class Sequencer {
 public:
