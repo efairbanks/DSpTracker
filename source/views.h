@@ -25,71 +25,37 @@ public:
         scanKeys();
 
         if(held & KEY_A) {
-            switch(keys) {
-                case KEY_DOWN:
-                    Sequencer::getInstance()->sequence.columns[cursorCol].rows[cursorRow].value-=16;
-                    break;
-                case KEY_UP:
-                    Sequencer::getInstance()->sequence.columns[cursorCol].rows[cursorRow].value+=16;
-                    break;
-                case KEY_LEFT:
-                    Sequencer::getInstance()->sequence.columns[cursorCol].rows[cursorRow].value-=1;
-                    break;
-                case KEY_RIGHT:
-                    Sequencer::getInstance()->sequence.columns[cursorCol].rows[cursorRow].value+=1;
-                    break;
-            }
+            // modify value under cursor
+            if(keys & KEY_DOWN) Sequencer::getInstance()->sequence.columns[cursorCol].rows[cursorRow].value-=16;
+            if(keys & KEY_UP) Sequencer::getInstance()->sequence.columns[cursorCol].rows[cursorRow].value+=16;
+            if(keys & KEY_LEFT) Sequencer::getInstance()->sequence.columns[cursorCol].rows[cursorRow].value-=1;
+            if(keys & KEY_RIGHT) Sequencer::getInstance()->sequence.columns[cursorCol].rows[cursorRow].value+=1;
         } else if(held & KEY_X) {
-            switch(keys) {
-                case KEY_DOWN:
-                    Sequencer::getInstance()->sequence.columns[cursorCol].rows[cursorRow].key-=16;
-                    break;
-                case KEY_UP:
-                    Sequencer::getInstance()->sequence.columns[cursorCol].rows[cursorRow].key+=16;
-                    break;
-                case KEY_LEFT:
-                    Sequencer::getInstance()->sequence.columns[cursorCol].rows[cursorRow].key-=1;
-                    break;
-                case KEY_RIGHT:
-                    Sequencer::getInstance()->sequence.columns[cursorCol].rows[cursorRow].key+=1;
-                    break;
-            }
+            // modify command under cursor
+            if(keys & KEY_DOWN) Sequencer::getInstance()->sequence.columns[cursorCol].rows[cursorRow].key-=16;
+            if(keys & KEY_UP) Sequencer::getInstance()->sequence.columns[cursorCol].rows[cursorRow].key+=16;
+            if(keys & KEY_LEFT) Sequencer::getInstance()->sequence.columns[cursorCol].rows[cursorRow].key-=1;
+            if(keys & KEY_RIGHT) Sequencer::getInstance()->sequence.columns[cursorCol].rows[cursorRow].key+=1;
         } else if(held & KEY_R) {
-            switch(keys) {
-                case KEY_DOWN:
-                    Sequencer::getInstance()->sequence.columns[cursorCol].rows.push_back(Row());
-                    break;
-                case KEY_UP:
-                    Sequencer::getInstance()->sequence.columns[cursorCol].rows.pop_back();
-                    break;
-                case KEY_LEFT:
-                    break;
-                case KEY_RIGHT:
-                    break;
-            }
+            // add new column
+            if(keys & KEY_DOWN) Sequencer::getInstance()->sequence.columns[cursorCol].rows.push_back(Row());
+            if(keys & KEY_UP) Sequencer::getInstance()->sequence.columns[cursorCol].rows.pop_back();
         } else {
-            switch(keys) {
-                case KEY_DOWN:
-                    cursorRow++;
-                    break;
-                case KEY_UP:
-                    cursorRow--;
-                    break;
-                case KEY_LEFT:
-                    cursorCol--;
-                    break;
-                case KEY_RIGHT:
-                    cursorCol++;
-                    break;
-            }
-            if(cursorCol<0) cursorCol+=Sequencer::getInstance()->sequence.columns.size();
-            if(cursorCol>=Sequencer::getInstance()->sequence.columns.size()) cursorCol-=Sequencer::getInstance()->sequence.columns.size();
-            if(cursorRow<0) cursorRow+=Sequencer::getInstance()->sequence.columns[cursorCol].rows.size();
-            if(cursorRow>=Sequencer::getInstance()->sequence.columns[cursorCol].rows.size()) cursorRow-=Sequencer::getInstance()->sequence.columns[cursorCol].rows.size();
+            // move cursor, wrapping
+            int numCols = Sequencer::getInstance()->sequence.columns.size();
+            if(keys & KEY_LEFT) cursorCol = wrap(cursorCol-1, numCols);
+            if(keys & KEY_RIGHT) cursorCol = wrap(cursorCol+1, numCols);
+            int numRows = Sequencer::getInstance()->sequence.columns[cursorCol].rows.size();
+            if(keys & KEY_DOWN) cursorRow = wrap(cursorRow+1, numRows);
+            if(keys & KEY_UP) cursorRow = wrap(cursorRow-1, numRows);
         }
     }
     virtual void Render() {
         static char TEXBUF[256];
+
+        // render seq index line separator
+        glLine(	18, 0, 17, SCREEN_HEIGHT-1-8, RGB15(31,31,31));
+        // render seq
         for(int columnIndex=0; columnIndex<Sequencer::getInstance()->sequence.columns.size(); columnIndex++) {
             Column column = Sequencer::getInstance()->sequence.columns[columnIndex];
             int maxRowIndex = 0;
@@ -102,14 +68,10 @@ public:
             }
         }
 
-        glLine(	18, 0,
-                17, SCREEN_HEIGHT-1-8,
-                RGB15(31,31,31));
-
+        // render seq cursor
         glLine(	18 + cursorCol*32+5, cursorRow*8+1,
                 17 + cursorCol*32+5, (cursorRow+1)*8-1,
                 RGB15(31,31,31));
-
         glLine(	21 + (cursorCol+1)*32-1, cursorRow*8+1,
                 20 + (cursorCol+1)*32-1, (cursorRow+1)*8-1,
                 RGB15(31,31,31));
