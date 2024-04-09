@@ -266,7 +266,7 @@ public:
             mystream.callback		= on_stream_request;		// set callback function
             mystream.format			= MM_STREAM_16BIT_STEREO;	// format = stereo 16-bit
             mystream.timer			= MM_TIMER0;				// use hardware timer 0
-            mystream.manual			= false;					// don't use manual filling
+            mystream.manual			= true;					// don't use manual filling
             mmStreamOpen( &mystream );
         }
         return instance;
@@ -312,6 +312,9 @@ public:
         out += lowpass.Process(verb);
         scope.Process(out);
         return out;
+    }
+    void RenderAudio() {
+        mmStreamUpdate();
     }
     ~SoundEngine() = default;
 private:

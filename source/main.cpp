@@ -1,151 +1,67 @@
 #include <nds.h>
 #include <gl2d.h>
 #include <stdio.h>
-#include <maxmod9.h>
 
-#include "graphics.h"
-#include "sound.h"
-#include "sequencer.h"
-#include "input.h"
-
-touchPosition touchXY;
-int cursorCol = 0;
-int cursorRow = 0;
+#include "views.h"
 
 GraphicsEngine* graphicsEngine;
 SoundEngine* soundEngine;
 Sequencer* sequencer;
 
+std::vector<View*> views;
+int topScreenView = 0;
+int bottomScreenView = 1;
+
 void init() {
 	sequencer = Sequencer::getInstance();
 	graphicsEngine = GraphicsEngine::getInstance();
 	soundEngine = SoundEngine::getInstance();
+	views.push_back((View*)(new SequencerView()));
+	views.push_back((View*)(new ScopeView));
 }
 
 void handleInput() {
 	scanKeys();
 	int keys = keysDown();
 	int held = keysHeld();
-	touchRead(&touchXY);
 
-	if(held & KEY_A) {
-		switch(keys) {
-			case KEY_DOWN:
-				sequencer->sequence.columns[cursorCol].rows[cursorRow].value-=16;
-				break;
-			case KEY_UP:
-				sequencer->sequence.columns[cursorCol].rows[cursorRow].value+=16;
-				break;
-			case KEY_LEFT:
-				sequencer->sequence.columns[cursorCol].rows[cursorRow].value-=1;
-				break;
-			case KEY_RIGHT:
-				sequencer->sequence.columns[cursorCol].rows[cursorRow].value+=1;
-				break;
-		}
-	} else if(held & KEY_X) {
-		switch(keys) {
-			case KEY_DOWN:
-				sequencer->sequence.columns[cursorCol].rows[cursorRow].key-=16;
-				break;
-			case KEY_UP:
-				sequencer->sequence.columns[cursorCol].rows[cursorRow].key+=16;
-				break;
-			case KEY_LEFT:
-				sequencer->sequence.columns[cursorCol].rows[cursorRow].key-=1;
-				break;
-			case KEY_RIGHT:
-				sequencer->sequence.columns[cursorCol].rows[cursorRow].key+=1;
-				break;
-		}
-	} else if(held & KEY_R) {
-		switch(keys) {
-			case KEY_DOWN:
-				sequencer->sequence.columns[cursorCol].rows.push_back(Row());
-				break;
-			case KEY_UP:
-				sequencer->sequence.columns[cursorCol].rows.pop_back();
-				break;
-			case KEY_LEFT:
-				break;
-			case KEY_RIGHT:
-				break;
-		}
+	if(held & KEY_SELECT) {
+		if(keys & KEY_UP) topScreenView = wrap(topScreenView+1, views.size());
+		if(keys & KEY_DOWN) topScreenView = wrap(topScreenView-1, views.size());
+		if(keys & KEY_LEFT) bottomScreenView = wrap(bottomScreenView+1, views.size());
+		if(keys & KEY_RIGHT) bottomScreenView = wrap(bottomScreenView-1, views.size());
 	} else {
-		switch(keys) {
-			case KEY_DOWN:
-				cursorRow++;
-				break;
-			case KEY_UP:
-				cursorRow--;
-				break;
-			case KEY_LEFT:
-				cursorCol--;
-				break;
-			case KEY_RIGHT:
-				cursorCol++;
-				break;
-		}
-		if(cursorCol<0) cursorCol+=sequencer->sequence.columns.size();
-		if(cursorCol>=sequencer->sequence.columns.size()) cursorCol-=sequencer->sequence.columns.size();
-		if(cursorRow<0) cursorRow+=sequencer->sequence.columns[cursorCol].rows.size();
-		if(cursorRow>=sequencer->sequence.columns[cursorCol].rows.size()) cursorRow-=sequencer->sequence.columns[cursorCol].rows.size();
+		views[topScreenView]->HandleInput(keys, held);
 	}
 }
 
-void drawScreen() {
-	for(int columnIndex=0; columnIndex<sequencer->sequence.columns.size(); columnIndex++) {
-		Column column = sequencer->sequence.columns[columnIndex];
-		iprintf("\x1b[%d;%dH", 0, 2);
-		int maxRowIndex = 0;
-		for(int rowIndex=0; rowIndex<23; rowIndex++) {
-			if(rowIndex<column.rows.size()) {
-				iprintf("\x1b[%d;%dH%2d", rowIndex, 0, rowIndex);
-				iprintf("\x1b[%d;%dH%1c%02X \n", rowIndex, columnIndex*4+3, Row::KeyToChar(column.rows[rowIndex].key), column.rows[rowIndex].value);
-				maxRowIndex = std::max(maxRowIndex, rowIndex);
-			} else {
-				iprintf("\x1b[%d;%dH    \n", rowIndex, columnIndex*4+3);
-			}
-		}
-	}
+void drawTopScreen() {
+	views[topScreenView]->Render();
+}
 
-	glBegin2D();
-
-	graphicsEngine->DrawScope(soundEngine->scope.buffer, soundEngine->scope.length, RGB15(20,20,31));
-	if(soundEngine->scope.IsReady()) soundEngine->scope.Reset();
-
-	glLine(	17, 0,
-			16, SCREEN_HEIGHT-1-8,
-			RGB15(31,31,31));
-
-	glBoxFilled(19, Sequencer::getInstance()->seqIndex*8,
-				21, (Sequencer::getInstance()->seqIndex+1)*8-2,
-				RGB15(31,31,31));
-
-	glLine(	16 + cursorCol*32+5, cursorRow*8,
-			15 + cursorCol*32+5, (cursorRow+1)*8-2,
-			RGB15(31,31,31));
-
-	glLine(	19 + (cursorCol+1)*32-1, cursorRow*8,
-			18 + (cursorCol+1)*32-1, (cursorRow+1)*8-2,
-			RGB15(31,31,31));
-
-
-
-	glEnd2D();
-	glFlush(0);
-
-	swiWaitForVBlank();
+void drawBottomScreen() {
+	views[bottomScreenView]->Render();
 }
 
 int main( void ) {
-
 	init();
-
 	while( 1 )
-	{		
+	{	
+		// always draw first
+		graphicsEngine->StartDrawing();
+		if(graphicsEngine->currentScreen == GraphicsEngine::SCREEN_TOP) {
+			drawTopScreen();
+		} else {
+			drawBottomScreen();
+		}
+		graphicsEngine->StopDrawing();
+
+		// render audio and handle input
+		soundEngine->RenderAudio();
 		handleInput();
-		drawScreen();				
+
+		// always wait for next vblank last
+		swiWaitForVBlank();
 	}
 	
 	return 0;
