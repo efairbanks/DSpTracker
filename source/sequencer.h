@@ -18,11 +18,6 @@ Sequencer
     Config
 */
 
-typedef enum {
-    COLUMN_NOTE,
-    COLUMN_EFFECT
-} ColumnType;
-
 class Row {
 public:
     static char KeyToChar(int key) {
@@ -63,11 +58,9 @@ public:
 
 class Column {
 public:
-    ColumnType type;
     vector<Row> rows;
     int index;
-    Column(ColumnType colType, u32 length) {
-        type = colType;
+    Column(u32 length) {
         index = -1;
         for(int i=0; i<length; i++) rows.push_back(Row());
     }
@@ -86,9 +79,9 @@ class Sequence {
 public:
     vector<Column> columns;
     Sequence() {
-        columns.push_back(Column(COLUMN_NOTE, 1));
-        columns.push_back(Column(COLUMN_EFFECT, 1));
-        columns.push_back(Column(COLUMN_EFFECT, 1));
+        columns.push_back(Column(1));
+        columns.push_back(Column(1));
+        columns.push_back(Column(1));
     }
 };
 
