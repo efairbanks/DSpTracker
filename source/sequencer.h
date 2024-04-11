@@ -11,17 +11,6 @@ using namespace std;
 
 u32 NOTE_FREQ_TABLE[12] = {4186, 4435, 4698, 4978, 5274, 5588, 5920, 6272, 6645, 7040, 7459, 7902};
 
-/*
-Sequencer
-    Track[]
-        Pattern[]
-            Seq[]
-                Row[]
-    Table[]
-    Instrument[]
-    Config
-*/
-
 class Row {
 public:
     static char KeyToChar(int key) {
@@ -33,18 +22,15 @@ public:
                 return 'N';
                 break;
             case 2:
-                return 'I';
-                break;
-            case 3:
                 return 'E';
                 break;
-            case 4:
+            case 3:
                 return 'M';
                 break;
-            case 5:
+            case 4:
                 return 'F';
                 break;
-            case 6:
+            case 5:
                 return 'T';
                 break;
             default:
@@ -88,8 +74,6 @@ public:
         columns.push_back(Column(1));
     }
 };
-
-
 
 class Sequencer {
 public:

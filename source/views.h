@@ -99,7 +99,7 @@ public:
     }
 };
 
-class HelpView {
+class ControlsView {
     int cursorCol = 0;
     int cursorRow = 0;
 public:
@@ -112,6 +112,23 @@ public:
         printf(8,16,RGB15(31,31,31), "X+DIR:   MODIFY CMD");
         printf(8,24,RGB15(31,31,31), "R+DIR:   ROW/COL +/-");
         printf(8,32,RGB15(31,31,31), "SEL+DIR: CHANGE PAGE");
+    }
+};
+
+class CommandView {
+    int cursorCol = 0;
+    int cursorRow = 0;
+public:
+    virtual void HandleInput(int keys, int held) {}
+    virtual void Render() {
+        glBoxFilled(0, 0,
+                    SCREEN_WIDTH, SCREEN_HEIGHT,
+                    RGB15(0,0,0));
+        printf(8,8, RGB15(31,31,31), "N: PLAY NOTE");
+        printf(8,16,RGB15(31,31,31), "E: ENVELOPE SPEED");
+        printf(8,24,RGB15(31,31,31), "M: PHASE MODULATION AMOUNT");
+        printf(8,32,RGB15(31,31,31), "F: PHASE MODULATION FREQUENCY");
+        printf(8,40,RGB15(31,31,31), "T: TEMPO");
     }
 };
 
