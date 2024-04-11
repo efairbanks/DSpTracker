@@ -137,12 +137,13 @@ private:
 };
 GraphicsEngine * GraphicsEngine::instance = nullptr;
 
-void printf(int x, int y, const char * format, ... )
+void printf(int x, int y, u16 color, const char * format, ... )
 {
   char buffer[256];
   va_list args;
   va_start (args, format);
   vsprintf (buffer, format, args);
+  glColor(color);
   GraphicsEngine::getInstance()->Font.Print(x, y, buffer);
   va_end (args);
 }

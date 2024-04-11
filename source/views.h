@@ -57,6 +57,14 @@ public:
     virtual void Render() {
         static char TEXBUF[256];
 
+        int colPadding = 26;
+
+        glBoxFilled(
+            cursorCol*colPadding+24, cursorRow*8,
+            cursorCol*colPadding+49, (cursorRow+1)*8,
+            RGB15(25,25,25)
+        );
+
         // render seq index line separator
         glLine(	18, 0, 17, SCREEN_HEIGHT-1-8, RGB15(31,31,31));
         // render seq
@@ -65,20 +73,14 @@ public:
             int maxRowIndex = 0;
             for(int rowIndex=0; rowIndex<23; rowIndex++) {
                 if(rowIndex<column.rows.size()) {
-                    printf(0, 8*rowIndex, "%2d", rowIndex);
-                    printf((columnIndex*4+3)*8, rowIndex*8, "%1c%02X ", Row::KeyToChar(column.rows[rowIndex].key), column.rows[rowIndex].value);
+                    printf(0, 8*rowIndex, RGB15(31,31,31), "%2d", rowIndex);
+                    u16 rowColor = Sequencer::getInstance()->sequence.columns[columnIndex].index == rowIndex ? RGB15(31,31,31) : RGB15(20,20,20);
+                    if(rowIndex == cursorRow && columnIndex == cursorCol) rowColor = RGB15(0,0,0);
+                    printf(columnIndex*colPadding+24, rowIndex*8, rowColor, "%1c%02X ", Row::KeyToChar(column.rows[rowIndex].key), column.rows[rowIndex].value);
                     maxRowIndex = std::max(maxRowIndex, rowIndex);
                 }
             }
         }
-
-        // render seq cursor
-        glLine(	18 + cursorCol*32+5, cursorRow*8+1,
-                17 + cursorCol*32+5, (cursorRow+1)*8-1,
-                RGB15(31,31,31));
-        glLine(	20 + (cursorCol+1)*32-1, cursorRow*8+1,
-                19 + (cursorCol+1)*32-1, (cursorRow+1)*8-1,
-                RGB15(31,31,31));
     }
 };
 
