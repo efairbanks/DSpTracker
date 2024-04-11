@@ -5,7 +5,11 @@
 #include <stdio.h>
 #include <vector>
 
+#include "utils.h"
+
 using namespace std;
+
+u32 NOTE_FREQ_TABLE[12] = {4186, 4435, 4698, 4978, 5274, 5588, 5920, 6272, 6645, 7040, 7459, 7902};
 
 /*
 Sequencer
@@ -101,6 +105,10 @@ public:
     void ProcessRow() {
         sequence.columns[0].Increment();
         Row row = sequence.columns[0].GetRow();
+    }
+    int NoteToFreq(u8 octave, u8 note) {
+        while(note>11) { note--; octave++; }
+        return NOTE_FREQ_TABLE[wrap(note, 12)]>>(8-octave);
     }
 private:
     static Sequencer * instance;

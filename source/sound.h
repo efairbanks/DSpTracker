@@ -7,7 +7,6 @@
 #include <vector>
 
 #include "sequencer.h"
-#include "utils.h"
 
 #define SAMPLE_RATE 25000
 #define B32_1HZ_DELTA ((0xFFFFFFFF)/SAMPLE_RATE)
@@ -287,7 +286,7 @@ public:
                 if(row.key > 0) {
                     switch(Row::KeyToChar(row.key)) {
                         case 'N':
-                            voices[0].PlayNote(row.value*8);
+                            voices[0].PlayNote(Sequencer::getInstance()->NoteToFreq(row.value>>4, row.value & 0xF));
                             break;
                         case 'E':
                             voices[0].line.delta = (B32_1HZ_DELTA*8*row.value)>>4;
