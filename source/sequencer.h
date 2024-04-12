@@ -6,6 +6,7 @@
 #include <vector>
 
 #include "utils.h"
+#include "synth.h"
 
 using namespace std;
 
@@ -50,8 +51,10 @@ class Column {
 public:
     vector<Row> rows;
     int index;
+    int tick;
     Column(u32 length) {
         index = -1;
+        tick = -1;
         for(int i=0; i<length; i++) rows.push_back(Row());
     }
     Row GetRow(int i=-1) {
@@ -69,8 +72,6 @@ class Sequence {
 public:
     vector<Column> columns;
     Sequence() {
-        columns.push_back(Column(1));
-        columns.push_back(Column(1));
         columns.push_back(Column(1));
     }
 };
