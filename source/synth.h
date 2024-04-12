@@ -93,7 +93,7 @@ public:
     u32 lastPhase;
     void Init() {
         phase = 0xFFFFFFFF;
-        delta = B32_1HZ_DELTA * 4;
+        delta = B32_1HZ_DELTA * 32;
         lastPhase = 0;
     }
     Metro() {
@@ -238,6 +238,26 @@ public:
         in = in<<8;
         last = ((in*coef)>>8) + (last*((1<<8)-coef)>>8);
         return last>>8;
+    }
+};
+
+class Synth {
+public:
+    vector<Voice> voices;
+    Metro metro;
+    Synth() {
+        voices.push_back(Voice());
+    }
+    bool GetTick() {
+        return metro.Process();
+    }
+    void PlayNote(int freq, int voice=0) {
+        voices[voice].PlayNote(freq);
+    }
+    s16 Process() {
+        s16 out = 0;
+        for(int i=0; i<voices.size(); i++) out += voices[i].Process();
+        return out;
     }
 };
 

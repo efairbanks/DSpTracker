@@ -18,34 +18,53 @@ public:
 class SequencerView {
     int cursorCol = 0;
     int cursorRow = 0;
+    u8 currentSequence = 0;
 public:
     virtual void HandleInput(int keys, int held) {
         touchPosition touchXY;
         touchRead(&touchXY);
         scanKeys();
 
-        int numCols = Sequencer::getInstance()->sequence.columns.size();
-        int numRows = Sequencer::getInstance()->sequence.columns[cursorCol].rows.size();
+        int numCols = Sequencer::getInstance()->sequences[currentSequence].columns.size();
+        int numRows = Sequencer::getInstance()->sequences[currentSequence].columns[cursorCol].rows.size();
+
+        if((held & KEY_L) && (keys & KEY_START)) {
+            Sequencer::getInstance()->Reset();
+        } else if((held & KEY_R) && (keys & KEY_START)) {
+            Sequencer::getInstance()->sequences[currentSequence].Reset();
+        } else if(keys & KEY_START) {
+            if(Sequencer::getInstance()->sequences[currentSequence].playing) {
+                Sequencer::getInstance()->sequences[currentSequence].playing = false;
+            } else {
+                Sequencer::getInstance()->sequences[currentSequence].playing = true;
+            }
+        }
 
         if(held & KEY_A) {
             // modify value under cursor
-            if(keys & KEY_DOWN) Sequencer::getInstance()->sequence.columns[cursorCol].rows[cursorRow].value-=16;
-            if(keys & KEY_UP) Sequencer::getInstance()->sequence.columns[cursorCol].rows[cursorRow].value+=16;
-            if(keys & KEY_LEFT) Sequencer::getInstance()->sequence.columns[cursorCol].rows[cursorRow].value-=1;
-            if(keys & KEY_RIGHT) Sequencer::getInstance()->sequence.columns[cursorCol].rows[cursorRow].value+=1;
+            if(keys & KEY_DOWN) Sequencer::getInstance()->sequences[currentSequence].columns[cursorCol].rows[cursorRow].value-=16;
+            if(keys & KEY_UP) Sequencer::getInstance()->sequences[currentSequence].columns[cursorCol].rows[cursorRow].value+=16;
+            if(keys & KEY_LEFT) Sequencer::getInstance()->sequences[currentSequence].columns[cursorCol].rows[cursorRow].value-=1;
+            if(keys & KEY_RIGHT) Sequencer::getInstance()->sequences[currentSequence].columns[cursorCol].rows[cursorRow].value+=1;
         } else if(held & KEY_X) {
             // modify command under cursor
-            if(keys & KEY_DOWN) Sequencer::getInstance()->sequence.columns[cursorCol].rows[cursorRow].key-=16;
-            if(keys & KEY_UP) Sequencer::getInstance()->sequence.columns[cursorCol].rows[cursorRow].key+=16;
-            if(keys & KEY_LEFT) Sequencer::getInstance()->sequence.columns[cursorCol].rows[cursorRow].key-=1;
-            if(keys & KEY_RIGHT) Sequencer::getInstance()->sequence.columns[cursorCol].rows[cursorRow].key+=1;
+            if(keys & KEY_DOWN) Sequencer::getInstance()->sequences[currentSequence].columns[cursorCol].rows[cursorRow].key-=16;
+            if(keys & KEY_UP) Sequencer::getInstance()->sequences[currentSequence].columns[cursorCol].rows[cursorRow].key+=16;
+            if(keys & KEY_LEFT) Sequencer::getInstance()->sequences[currentSequence].columns[cursorCol].rows[cursorRow].key-=1;
+            if(keys & KEY_RIGHT) Sequencer::getInstance()->sequences[currentSequence].columns[cursorCol].rows[cursorRow].key+=1;
         } else if(held & KEY_R) {
             // add/subtract columns
-            if(keys & KEY_LEFT) Sequencer::getInstance()->sequence.columns.pop_back();
-            if(keys & KEY_RIGHT) Sequencer::getInstance()->sequence.columns.push_back(Column(1));
+            if(keys & KEY_LEFT) Sequencer::getInstance()->sequences[currentSequence].columns.pop_back();
+            if(keys & KEY_RIGHT) Sequencer::getInstance()->sequences[currentSequence].columns.push_back(Column(1));
             // add/subtract rows
-            if(keys & KEY_DOWN) Sequencer::getInstance()->sequence.columns[cursorCol].rows.push_back(Row());
-            if(keys & KEY_UP) Sequencer::getInstance()->sequence.columns[cursorCol].rows.pop_back();
+            if(keys & KEY_DOWN) Sequencer::getInstance()->sequences[currentSequence].columns[cursorCol].rows.push_back(Row());
+            if(keys & KEY_UP) Sequencer::getInstance()->sequences[currentSequence].columns[cursorCol].rows.pop_back();
+        } else if(held & KEY_L) {
+            // switch sequence
+            if(keys & KEY_LEFT) currentSequence--;
+            if(keys & KEY_RIGHT) currentSequence++;
+            if(keys & KEY_DOWN) currentSequence-=16;
+            if(keys & KEY_UP) currentSequence+=16;
         } else {
             // move cursor, wrapping
             if(keys & KEY_LEFT) cursorCol = wrap(cursorCol-1, numCols);
@@ -65,16 +84,17 @@ public:
             RGB15(25,25,25)
         );
 
+        printf(0, SCREEN_HEIGHT-8, RGB15(31,26,26), "%02X", currentSequence);
         // render seq index line separator
         glLine(	18, 0, 17, SCREEN_HEIGHT-1-8, RGB15(31,31,31));
         // render seq
-        for(int columnIndex=0; columnIndex<Sequencer::getInstance()->sequence.columns.size(); columnIndex++) {
-            Column column = Sequencer::getInstance()->sequence.columns[columnIndex];
+        for(int columnIndex=0; columnIndex<Sequencer::getInstance()->sequences[currentSequence].columns.size(); columnIndex++) {
+            Column column = Sequencer::getInstance()->sequences[currentSequence].columns[columnIndex];
             int maxRowIndex = 0;
             for(int rowIndex=0; rowIndex<23; rowIndex++) {
                 if(rowIndex<column.rows.size()) {
                     printf(0, 8*rowIndex, RGB15(31,31,31), "%2d", rowIndex);
-                    u16 rowColor = Sequencer::getInstance()->sequence.columns[columnIndex].index == rowIndex ? RGB15(31,31,31) : RGB15(20,20,20);
+                    u16 rowColor = Sequencer::getInstance()->sequences[currentSequence].columns[columnIndex].index == rowIndex ? RGB15(31,31,31) : RGB15(20,20,20);
                     if(rowIndex == cursorRow && columnIndex == cursorCol) rowColor = RGB15(0,0,0);
                     printf(columnIndex*colPadding+24, rowIndex*8, rowColor, "%1c%02X ", Row::KeyToChar(column.rows[rowIndex].key), column.rows[rowIndex].value);
                     maxRowIndex = std::max(maxRowIndex, rowIndex);
@@ -85,8 +105,6 @@ public:
 };
 
 class ScopeView {
-    int cursorCol = 0;
-    int cursorRow = 0;
 public:
     virtual void HandleInput(int keys, int held) {}
     virtual void Render() {
@@ -100,8 +118,6 @@ public:
 };
 
 class ControlsView {
-    int cursorCol = 0;
-    int cursorRow = 0;
 public:
     virtual void HandleInput(int keys, int held) {}
     virtual void Render() {
@@ -111,13 +127,12 @@ public:
         printf(8,8, RGB15(31,31,31), "A+DIR:   MODIFY VAL");
         printf(8,16,RGB15(31,31,31), "X+DIR:   MODIFY CMD");
         printf(8,24,RGB15(31,31,31), "R+DIR:   ROW/COL +/-");
-        printf(8,32,RGB15(31,31,31), "SEL+DIR: CHANGE PAGE");
+        printf(8,32,RGB15(31,31,31), "L+DIR:   CHANGE SEQUENCE");
+        printf(8,40,RGB15(31,31,31), "SEL+DIR: CHANGE PAGE");
     }
 };
 
 class CommandView {
-    int cursorCol = 0;
-    int cursorRow = 0;
 public:
     virtual void HandleInput(int keys, int held) {}
     virtual void Render() {
@@ -129,6 +144,7 @@ public:
         printf(8,24,RGB15(31,31,31), "M: PHASE MODULATION AMOUNT");
         printf(8,32,RGB15(31,31,31), "F: PHASE MODULATION FREQUENCY");
         printf(8,40,RGB15(31,31,31), "T: TEMPO");
+        printf(8,48,RGB15(31,31,31), "S: PLAY SEQUENCE");
     }
 };
 
