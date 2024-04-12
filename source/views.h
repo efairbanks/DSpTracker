@@ -129,6 +129,7 @@ public:
         printf(8,24,RGB15(31,31,31), "R+DIR:   ROW/COL +/-");
         printf(8,32,RGB15(31,31,31), "L+DIR:   CHANGE SEQUENCE");
         printf(8,40,RGB15(31,31,31), "SEL+DIR: CHANGE PAGE");
+        printf(8,48,RGB15(31,31,31), "START:   PLAY");
     }
 };
 
