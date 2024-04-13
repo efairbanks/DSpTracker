@@ -67,16 +67,16 @@ public:
         index = -1;
         lastSubSequence = -1;
     }
-    Row GetRow(int i=-1) {
+    Row& GetRow(int i=-1) {
         if(i<0) i = index;
         i = wrap(i, rows.size());
         return rows[i];
     }
-    bool ProcessTick(vector<Row> &rowsToProcess) {
+    bool ProcessTick() {
         tick = wrap(tick + 1, ticksPerStep);
         if(tick == 0) {
             index = wrap(index + 1, rows.size());
-            rowsToProcess.push_back(rows[index]);
+            //rowsToProcess.push_back(rows[index]);
             return true;
         } else {
             return false;
@@ -95,11 +95,10 @@ public:
     void Reset() {
         for(Column& column : columns) column.Reset();
     }
-    bool ProcessTick(vector<Row> &rowsToProces) {
-        vector<Row> rows;
+    bool ProcessTick() {
         bool columnIncremented = false;
         for(int i=0; i<columns.size(); i++) {
-            columnIncremented |= columns[i].ProcessTick(rowsToProces);
+            columnIncremented |= columns[i].ProcessTick();
         }
         return columnIncremented;
     }
@@ -123,41 +122,53 @@ public:
             sequence.Reset();
         }
     }
-    bool ProcessRows(Synth& synth) {
+    bool ProcessRow(Row& row, int sequenceIndex, int columnIndex, Synth& synth) {
         bool tickProcessed = false;
-        for(Row& row : rows) {
-            if(row.key > 0) {
-                tickProcessed = true;
-                switch(Row::KeyToChar(row.key)) {
-                    case 'N':
-                        synth.voices[0].PlayNote(NoteToFreq(row.value>>4, row.value & 0xF));
-                        break;
-                    case 'E':
-                        synth.voices[0].line.delta = (B32_1HZ_DELTA*8*row.value)>>4;
-                        break;
-                    case 'F':
-                        synth.voices[0].modFreqCoef = row.value;
-                        break;
-                    case 'M':
-                        synth.voices[0].modAmount = row.value;
-                        break;
-                    case 'T':
-                        synth.metro.delta = B32_1HZ_DELTA*(row.value+1);
-                        break;
-                }
+        if(row.key > 0) {
+            tickProcessed = true;
+            switch(Row::KeyToChar(row.key)) {
+                case 'N':
+                    synth.voices[0].PlayNote(NoteToFreq(row.value>>4, row.value & 0xF));
+                    break;
+                case 'E':
+                    synth.voices[0].line.delta = (B32_1HZ_DELTA*8*row.value)>>4;
+                    break;
+                case 'F':
+                    synth.voices[0].modFreqCoef = row.value;
+                    break;
+                case 'M':
+                    synth.voices[0].modAmount = row.value;
+                    break;
+                case 'T':
+                    synth.metro.delta = B32_1HZ_DELTA*(row.value+1);
+                    break;
+                case 'S':
+                    if(sequences[seqIndex].columns[columnIndex].lastSubSequence >= 0) {
+                        sequences[sequences[seqIndex].columns[columnIndex].lastSubSequence].playing = false;
+                        sequences[sequences[seqIndex].columns[columnIndex].lastSubSequence].Reset();
+                    }
+                    sequences[row.value].Reset();
+                    sequences[row.value].playing = true;
+                    sequences[seqIndex].columns[columnIndex].lastSubSequence = row.value;
+                    break;
             }
         }
-        rows.clear();
         return tickProcessed;
     }
     bool ProcessTick(Synth &synth) {
         bool tickProcessed = false;
+        int sequenceIndex = 0;
         for(Sequence& sequence : sequences) {
             if(sequence.playing) {
-                if(sequence.ProcessTick(rows)) {
-                    tickProcessed |= ProcessRows(synth);
+                if(sequence.ProcessTick()) {
+                    int columnIndex = 0;
+                    for(Column& column : sequence.columns) {
+                        ProcessRow(column.GetRow(), sequenceIndex, columnIndex, synth);
+                        columnIndex++;
+                    }
                 }
             }
+            sequenceIndex++;
         }
         return tickProcessed;
     }
