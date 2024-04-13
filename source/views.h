@@ -25,45 +25,48 @@ public:
         touchRead(&touchXY);
         scanKeys();
 
-        int numCols = Sequencer::getInstance()->sequences[currentSequence].columns.size();
-        int numRows = Sequencer::getInstance()->sequences[currentSequence].columns[cursorCol].rows.size();
+        Sequence& sequence = Sequencer::getInstance()->sequences[currentSequence];
+        Column& column = sequence.columns[cursorCol];
+        Row& row = column.rows[cursorRow];
+        int numCols = sequence.columns.size();
+        int numRows = column.rows.size();
 
         if((held & KEY_L) && (keys & KEY_START)) {
             Sequencer::getInstance()->Reset();
         } else if((held & KEY_R) && (keys & KEY_START)) {
-            Sequencer::getInstance()->sequences[currentSequence].Reset();
+            sequence.Reset();
         } else if(keys & KEY_START) {
-            if(Sequencer::getInstance()->sequences[currentSequence].playing) {
-                Sequencer::getInstance()->sequences[currentSequence].playing = false;
+            if(sequence.playing) {
+                sequence.playing = false;
             } else {
-                Sequencer::getInstance()->sequences[currentSequence].playing = true;
+                sequence.playing = true;
             }
         }
 
         if(held & KEY_A) {
             // modify value under cursor
-            if(keys & KEY_DOWN) Sequencer::getInstance()->sequences[currentSequence].columns[cursorCol].rows[cursorRow].value-=16;
-            if(keys & KEY_UP) Sequencer::getInstance()->sequences[currentSequence].columns[cursorCol].rows[cursorRow].value+=16;
-            if(keys & KEY_LEFT) Sequencer::getInstance()->sequences[currentSequence].columns[cursorCol].rows[cursorRow].value-=1;
-            if(keys & KEY_RIGHT) Sequencer::getInstance()->sequences[currentSequence].columns[cursorCol].rows[cursorRow].value+=1;
+            if(keys & KEY_DOWN) row.value-=16;
+            if(keys & KEY_UP) row.value+=16;
+            if(keys & KEY_LEFT) row.value-=1;
+            if(keys & KEY_RIGHT) row.value+=1;
         } else if(held & KEY_X) {
             // modify command under cursor
-            if(keys & KEY_DOWN) Sequencer::getInstance()->sequences[currentSequence].columns[cursorCol].rows[cursorRow].key-=16;
-            if(keys & KEY_UP) Sequencer::getInstance()->sequences[currentSequence].columns[cursorCol].rows[cursorRow].key+=16;
-            if(keys & KEY_LEFT) Sequencer::getInstance()->sequences[currentSequence].columns[cursorCol].rows[cursorRow].key-=1;
-            if(keys & KEY_RIGHT) Sequencer::getInstance()->sequences[currentSequence].columns[cursorCol].rows[cursorRow].key+=1;
+            if(keys & KEY_DOWN) row.key-=16;
+            if(keys & KEY_UP) row.key+=16;
+            if(keys & KEY_LEFT) row.key-=1;
+            if(keys & KEY_RIGHT) row.key+=1;
         } else if((held & KEY_L) && (held & KEY_R)) {
-            if(keys & KEY_DOWN) Sequencer::getInstance()->sequences[currentSequence].columns[cursorCol].ticksPerStep -= 16;
-            if(keys & KEY_UP) Sequencer::getInstance()->sequences[currentSequence].columns[cursorCol].ticksPerStep += 16;
-            if(keys & KEY_LEFT) Sequencer::getInstance()->sequences[currentSequence].columns[cursorCol].ticksPerStep--;
-            if(keys & KEY_RIGHT) Sequencer::getInstance()->sequences[currentSequence].columns[cursorCol].ticksPerStep++;
+            if(keys & KEY_DOWN) column.ticksPerStep -= 16;
+            if(keys & KEY_UP) column.ticksPerStep += 16;
+            if(keys & KEY_LEFT) column.ticksPerStep--;
+            if(keys & KEY_RIGHT) column.ticksPerStep++;
         } else if(held & KEY_R) {
             // add/subtract columns
-            if(keys & KEY_LEFT) Sequencer::getInstance()->sequences[currentSequence].columns.pop_back();
-            if(keys & KEY_RIGHT) Sequencer::getInstance()->sequences[currentSequence].columns.push_back(Column(1));
+            if((keys & KEY_LEFT) && sequence.columns.size() > 0) sequence.columns.pop_back();
+            if(keys & KEY_RIGHT) sequence.columns.push_back(Column(1));
             // add/subtract rows
-            if(keys & KEY_DOWN) Sequencer::getInstance()->sequences[currentSequence].columns[cursorCol].rows.push_back(Row());
-            if(keys & KEY_UP) Sequencer::getInstance()->sequences[currentSequence].columns[cursorCol].rows.pop_back();
+            if(keys & KEY_DOWN) column.rows.push_back(Row());
+            if((keys & KEY_UP) && column.rows.size() > 0) column.rows.pop_back();
         } else if(held & KEY_L) {
             // switch sequence
             if(keys & KEY_LEFT) currentSequence--;
