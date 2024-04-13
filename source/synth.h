@@ -246,7 +246,7 @@ public:
     vector<Voice> voices;
     Metro metro;
     Synth() {
-        voices.push_back(Voice());
+        for(int i=0; i<4; i++) voices.push_back(Voice());
     }
     bool GetTick() {
         return metro.Process();

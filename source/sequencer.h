@@ -37,6 +37,9 @@ public:
             case 6:
                 return 'S';
                 break;
+            case 7:
+                return 'V';
+                break;
             default:
                 return '?';
                 break;
@@ -87,10 +90,12 @@ public:
 class Sequence {
 public:
     bool playing;
+    int voice;
     vector<Column> columns;
     Sequence() {
         columns.push_back(Column(1));
         playing = false;
+        voice = 0;
     }
     void Reset() {
         for(Column& column : columns) column.Reset();
@@ -126,30 +131,34 @@ public:
         bool tickProcessed = false;
         if(row.key > 0) {
             tickProcessed = true;
+            int voice = sequences[sequenceIndex].voice;
             switch(Row::KeyToChar(row.key)) {
                 case 'N':
-                    synth.voices[0].PlayNote(NoteToFreq(row.value>>4, row.value & 0xF));
+                    synth.voices[voice].PlayNote(NoteToFreq(row.value>>4, row.value & 0xF));
                     break;
                 case 'E':
-                    synth.voices[0].line.delta = (B32_1HZ_DELTA*8*row.value)>>4;
+                    synth.voices[voice].line.delta = (B32_1HZ_DELTA*8*row.value)>>4;
                     break;
                 case 'F':
-                    synth.voices[0].modFreqCoef = row.value;
+                    synth.voices[voice].modFreqCoef = row.value;
                     break;
                 case 'M':
-                    synth.voices[0].modAmount = row.value;
+                    synth.voices[voice].modAmount = row.value;
                     break;
                 case 'T':
                     synth.metro.delta = B32_1HZ_DELTA*(row.value+1);
                     break;
                 case 'S':
-                    if(sequences[seqIndex].columns[columnIndex].lastSubSequence >= 0) {
-                        sequences[sequences[seqIndex].columns[columnIndex].lastSubSequence].playing = false;
-                        sequences[sequences[seqIndex].columns[columnIndex].lastSubSequence].Reset();
+                    if(sequences[sequenceIndex].columns[columnIndex].lastSubSequence >= 0) {
+                        sequences[sequences[sequenceIndex].columns[columnIndex].lastSubSequence].playing = false;
+                        sequences[sequences[sequenceIndex].columns[columnIndex].lastSubSequence].Reset();
                     }
                     sequences[row.value].Reset();
                     sequences[row.value].playing = true;
-                    sequences[seqIndex].columns[columnIndex].lastSubSequence = row.value;
+                    sequences[sequenceIndex].columns[columnIndex].lastSubSequence = row.value;
+                    break;
+                case 'V':
+                    sequences[sequenceIndex].voice = wrap(row.value, synth.voices.size());
                     break;
             }
         }
