@@ -79,7 +79,6 @@ public:
         tick = wrap(tick + 1, ticksPerStep);
         if(tick == 0) {
             index = wrap(index + 1, rows.size());
-            //rowsToProcess.push_back(rows[index]);
             return true;
         } else {
             return false;
@@ -98,14 +97,7 @@ public:
         voice = 0;
     }
     void Reset() {
-        for(Column& column : columns) column.Reset();
-    }
-    bool ProcessTick() {
-        bool columnIncremented = false;
-        for(int i=0; i<columns.size(); i++) {
-            columnIncremented |= columns[i].ProcessTick();
-        }
-        return columnIncremented;
+        for(int i=0; i<columns.size(); i++) columns[i].Reset();
     }
 };
 
@@ -123,8 +115,8 @@ public:
     };
     ~Sequencer() = default;
     void Reset() {
-        for(Sequence& sequence : sequences) {
-            sequence.Reset();
+        for(int i=0; i<sequences.size(); i++) {
+            sequences[i].Reset();
         }
     }
     bool ProcessRow(Row& row, int sequenceIndex, int columnIndex, Synth& synth) {
@@ -167,13 +159,13 @@ public:
     bool ProcessTick(Synth &synth) {
         bool tickProcessed = false;
         int sequenceIndex = 0;
-        for(Sequence& sequence : sequences) {
+        for(int sequenceIndex=0; sequenceIndex<sequences.size(); sequenceIndex++) {
+            Sequence& sequence = sequences[sequenceIndex];
             if(sequence.playing) {
-                if(sequence.ProcessTick()) {
-                    int columnIndex = 0;
-                    for(Column& column : sequence.columns) {
+                for(int columnIndex=0; columnIndex<sequence.columns.size(); columnIndex++) {
+                    Column& column = sequence.columns[columnIndex];
+                    if(column.ProcessTick()) {
                         ProcessRow(column.GetRow(), sequenceIndex, columnIndex, synth);
-                        columnIndex++;
                     }
                 }
             }
