@@ -169,7 +169,6 @@ public:
                     }
                 }
             }
-            sequenceIndex++;
         }
         return tickProcessed;
     }
