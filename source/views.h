@@ -52,6 +52,11 @@ public:
             if(keys & KEY_UP) Sequencer::getInstance()->sequences[currentSequence].columns[cursorCol].rows[cursorRow].key+=16;
             if(keys & KEY_LEFT) Sequencer::getInstance()->sequences[currentSequence].columns[cursorCol].rows[cursorRow].key-=1;
             if(keys & KEY_RIGHT) Sequencer::getInstance()->sequences[currentSequence].columns[cursorCol].rows[cursorRow].key+=1;
+        } else if((held & KEY_L) && (held & KEY_R)) {
+            if(keys & KEY_DOWN) Sequencer::getInstance()->sequences[currentSequence].columns[cursorCol].ticksPerStep -= 16;
+            if(keys & KEY_UP) Sequencer::getInstance()->sequences[currentSequence].columns[cursorCol].ticksPerStep += 16;
+            if(keys & KEY_LEFT) Sequencer::getInstance()->sequences[currentSequence].columns[cursorCol].ticksPerStep--;
+            if(keys & KEY_RIGHT) Sequencer::getInstance()->sequences[currentSequence].columns[cursorCol].ticksPerStep++;
         } else if(held & KEY_R) {
             // add/subtract columns
             if(keys & KEY_LEFT) Sequencer::getInstance()->sequences[currentSequence].columns.pop_back();
@@ -84,7 +89,13 @@ public:
             RGB15(25,25,25)
         );
 
-        printf(0, SCREEN_HEIGHT-8, RGB15(31,26,26), "%02X", currentSequence);
+        glBoxFilled(0, SCREEN_HEIGHT-8, SCREEN_WIDTH, SCREEN_HEIGHT, RGB15(31,26,26));
+        printf(0, SCREEN_HEIGHT-8, RGB15(0,0,0), "%02X", currentSequence);
+        for(int i=0; i<Sequencer::getInstance()->sequences[currentSequence].columns.size(); i++) {
+            Column& column = Sequencer::getInstance()->sequences[currentSequence].columns[i];
+            printf(24+26*i, SCREEN_HEIGHT-8, RGB15(0,0,0), "%2X", column.ticksPerStep);
+        }
+
         // render seq index line separator
         glLine(	18, 0, 17, SCREEN_HEIGHT-1-8, RGB15(31,31,31));
         // render seq

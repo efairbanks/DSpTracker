@@ -17,9 +17,9 @@ void init() {
 	graphicsEngine = GraphicsEngine::getInstance();
 	soundEngine = SoundEngine::getInstance();
 	views.push_back((View*)(new SequencerView()));
+	views.push_back((View*)(new ScopeView));
 	views.push_back((View*)(new ControlsView));
 	views.push_back((View*)(new CommandView));
-	views.push_back((View*)(new ScopeView));
 }
 
 void handleInput() {

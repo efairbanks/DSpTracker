@@ -55,7 +55,8 @@ public:
     vector<Row> rows;
     int index;
     int tick;
-    int ticksPerStep = 16;
+    u8 ticksPerStep = 16;
+    int lastSubSequence = -1;
     Column(u32 length) {
         index = -1;
         tick = -1;
@@ -64,6 +65,7 @@ public:
     void Reset() {
         tick = -1;
         index = -1;
+        lastSubSequence = -1;
     }
     Row GetRow(int i=-1) {
         if(i<0) i = index;
@@ -108,7 +110,6 @@ public:
     vector<Sequence> sequences;
     vector<Row> rows; // vector that accumulates rows that need to be processed
     int seqIndex = -1;
-    int seqsProcessed = 0;
     static Sequencer * getInstance() {
         if(nullptr == instance) {
             instance = new Sequencer();
@@ -122,40 +123,39 @@ public:
             sequence.Reset();
         }
     }
+    bool ProcessRows(Synth& synth) {
+        bool tickProcessed = false;
+        for(Row& row : rows) {
+            if(row.key > 0) {
+                tickProcessed = true;
+                switch(Row::KeyToChar(row.key)) {
+                    case 'N':
+                        synth.voices[0].PlayNote(NoteToFreq(row.value>>4, row.value & 0xF));
+                        break;
+                    case 'E':
+                        synth.voices[0].line.delta = (B32_1HZ_DELTA*8*row.value)>>4;
+                        break;
+                    case 'F':
+                        synth.voices[0].modFreqCoef = row.value;
+                        break;
+                    case 'M':
+                        synth.voices[0].modAmount = row.value;
+                        break;
+                    case 'T':
+                        synth.metro.delta = B32_1HZ_DELTA*(row.value+1);
+                        break;
+                }
+            }
+        }
+        rows.clear();
+        return tickProcessed;
+    }
     bool ProcessTick(Synth &synth) {
         bool tickProcessed = false;
-        seqsProcessed = 0;
         for(Sequence& sequence : sequences) {
-            seqsProcessed++;
             if(sequence.playing) {
                 if(sequence.ProcessTick(rows)) {
-                    for(Row& row : rows) {
-                        if(row.key > 0) {
-                            tickProcessed = true;
-                            switch(Row::KeyToChar(row.key)) {
-                                case 'N':
-                                    synth.voices[0].PlayNote(NoteToFreq(row.value>>4, row.value & 0xF));
-                                    break;
-                                case 'E':
-                                    synth.voices[0].line.delta = (B32_1HZ_DELTA*8*row.value)>>4;
-                                    break;
-                                case 'F':
-                                    synth.voices[0].modFreqCoef = row.value;
-                                    break;
-                                case 'M':
-                                    synth.voices[0].modAmount = row.value;
-                                    break;
-                                case 'T':
-                                    synth.metro.delta = B32_1HZ_DELTA*(row.value+1);
-                                    break;
-                                case 'S':
-                                    sequences[row.value].Reset();
-                                    sequences[row.value].playing = true;
-                                    break;
-                            }
-                        }
-                    }
-                    rows.clear();
+                    tickProcessed |= ProcessRows(synth);
                 }
             }
         }
