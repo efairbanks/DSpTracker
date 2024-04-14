@@ -8,18 +8,22 @@ GraphicsEngine* graphicsEngine;
 SoundEngine* soundEngine;
 Sequencer* sequencer;
 
-std::vector<View*> views;
+std::vector<View*> topScreenViews;
+std::vector<View*> bottomScreenViews;
 int topScreenView = 0;
 int bottomScreenView = 1;
+bool flipped = 0;
 
 void init() {
 	sequencer = Sequencer::getInstance();
 	graphicsEngine = GraphicsEngine::getInstance();
 	soundEngine = SoundEngine::getInstance();
-	views.push_back((View*)(new SequencerView()));
-	views.push_back((View*)(new ScopeView));
-	views.push_back((View*)(new ControlsView));
-	views.push_back((View*)(new CommandView));
+	topScreenViews.push_back((View*)(new SequencerView()));
+	topScreenViews.push_back((View*)(new ScopeView));
+	bottomScreenViews.push_back((View*)(new SequencerView()));
+	bottomScreenViews.push_back((View*)(new ScopeView));
+	bottomScreenViews.push_back((View*)(new ControlsView));
+	bottomScreenViews.push_back((View*)(new CommandView));
 }
 
 void handleInput() {
@@ -28,21 +32,34 @@ void handleInput() {
 	int held = keysHeld();
 
 	if(held & KEY_SELECT) {
-		if(keys & KEY_UP) topScreenView = wrap(topScreenView+1, views.size());
-		if(keys & KEY_DOWN) topScreenView = wrap(topScreenView-1, views.size());
-		if(keys & KEY_LEFT) bottomScreenView = wrap(bottomScreenView+1, views.size());
-		if(keys & KEY_RIGHT) bottomScreenView = wrap(bottomScreenView-1, views.size());
+		if(keys & KEY_UP) topScreenView = wrap(topScreenView+1, topScreenViews.size());
+		if(keys & KEY_DOWN) topScreenView = wrap(topScreenView-1, topScreenViews.size());
+		if(keys & KEY_LEFT) bottomScreenView = wrap(bottomScreenView+1, bottomScreenViews.size());
+		if(keys & KEY_RIGHT) bottomScreenView = wrap(bottomScreenView-1, bottomScreenViews.size());
+		if(keys & KEY_R) flipped = !flipped;
 	} else {
-		views[topScreenView]->HandleInput(keys, held);
+		if(flipped) {
+			bottomScreenViews[bottomScreenView]->HandleInput(keys, held);
+		} else {
+			topScreenViews[topScreenView]->HandleInput(keys, held);
+		}
 	}
 }
 
 void drawTopScreen() {
-	views[topScreenView]->Render();
+	if(flipped) {
+		bottomScreenViews[bottomScreenView]->Render();
+	} else {
+		topScreenViews[topScreenView]->Render();
+	}
 }
 
 void drawBottomScreen() {
-	views[bottomScreenView]->Render();
+	if(!flipped) {
+		bottomScreenViews[bottomScreenView]->Render();
+	} else {
+		topScreenViews[topScreenView]->Render();
+	}
 }
 
 int main( void ) {
