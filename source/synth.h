@@ -86,6 +86,7 @@ public:
     }
 };
 
+#define METRO_1BPM_DELTA ((B32_1HZ_DELTA*64)/60)
 class Metro {
 public:
     u32 phase;
@@ -93,7 +94,7 @@ public:
     u32 lastPhase;
     void Init() {
         phase = 0xFFFFFFFF;
-        delta = B32_1HZ_DELTA * 32;
+        delta = METRO_1BPM_DELTA * 120;
         lastPhase = 0;
     }
     Metro() {

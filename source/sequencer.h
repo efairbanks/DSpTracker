@@ -138,7 +138,9 @@ public:
                     synth.voices[voice].modAmount = row.value;
                     break;
                 case 'T':
-                    synth.metro.delta = B32_1HZ_DELTA*(row.value+1);
+                    if(row.value > 0) {
+                        synth.metro.delta = METRO_1BPM_DELTA*row.value;
+                    }
                     break;
                 case 'S':
                     if(sequences[sequenceIndex].columns[columnIndex].lastSubSequence >= 0) {
@@ -173,7 +175,7 @@ public:
         return tickProcessed;
     }
     int NoteToFreq(u8 octave, u8 note) {
-        while(note>11) { note--; octave++; }
+        while(note>11) { note-=12; octave++; }
         return NOTE_FREQ_TABLE[wrap(note, 12)]>>(8-octave);
     }
 private:
