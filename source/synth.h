@@ -133,7 +133,11 @@ public:
         carrier.SetFreq(freq);
     }
     s16 Process() {
-        return (carrier.Process((modulator.Process()*modAmount)>>3) * line.Process())>>12;
+        if(line.firing) {
+            return (carrier.Process((modulator.Process()*modAmount)>>3) * line.Process())>>12;
+        } else {
+            return 0;
+        }
     }
 };
 
@@ -246,7 +250,7 @@ public:
     vector<Voice> voices;
     Metro metro;
     Synth() {
-        for(int i=0; i<4; i++) voices.push_back(Voice());
+        for(int i=0; i<8; i++) voices.push_back(Voice());
     }
     bool GetTick() {
         return metro.Process();
