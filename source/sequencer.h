@@ -60,7 +60,7 @@ public:
     int tick;
     u8 ticksPerStep = 16;
     int lastSubSequence = -1;
-    Column(u32 length) {
+    Column(u32 length=1) {
         index = -1;
         tick = -1;
         for(int i=0; i<length; i++) rows.push_back(Row());

@@ -9,6 +9,8 @@
 #include "sound.h"
 #include "sequencer.h"
 
+using namespace std;
+
 class View {	
 public:
 	virtual void HandleInput(int keys, int held) = 0;
@@ -16,6 +18,9 @@ public:
 };
 
 class SequencerView {
+    Sequence copiedSequence;
+    Column copiedColumn;
+    Row copiedRow;
     int cursorCol = 0;
     int cursorRow = 0;
     u8 currentSequence = 0;
@@ -62,24 +67,33 @@ public:
             if(keys & KEY_RIGHT) column.ticksPerStep++;
         } else if(held & KEY_R) {
             // add/subtract columns
-            if((keys & KEY_LEFT) && sequence.columns.size() > 0) sequence.columns.pop_back();
+            if((keys & KEY_LEFT) && sequence.columns.size() > 1) sequence.columns.pop_back();
             if(keys & KEY_RIGHT) sequence.columns.push_back(Column(1));
             // add/subtract rows
             if(keys & KEY_DOWN) column.rows.push_back(Row());
-            if((keys & KEY_UP) && column.rows.size() > 0) column.rows.pop_back();
+            if((keys & KEY_UP) && column.rows.size() > 1) column.rows.pop_back();
+            if(keys & KEY_B) copiedColumn = column;
+            if(keys & KEY_Y) sequence.columns[cursorCol] = copiedColumn;
+
         } else if(held & KEY_L) {
             // switch sequence
             if(keys & KEY_LEFT) currentSequence--;
             if(keys & KEY_RIGHT) currentSequence++;
             if(keys & KEY_DOWN) currentSequence-=16;
             if(keys & KEY_UP) currentSequence+=16;
+            if(keys & KEY_B) copiedSequence = sequence;
+            if(keys & KEY_Y) Sequencer::getInstance()->sequences[currentSequence] = copiedSequence;
         } else {
             // move cursor, wrapping
             if(keys & KEY_LEFT) cursorCol = wrap(cursorCol-1, numCols);
             if(keys & KEY_RIGHT) cursorCol = wrap(cursorCol+1, numCols);
             if(keys & KEY_DOWN) cursorRow = wrap(cursorRow+1, numRows);
             if(keys & KEY_UP) cursorRow = wrap(cursorRow-1, numRows);
+            if(keys & KEY_B) copiedRow = row;
+            if(keys & KEY_Y) column.rows[cursorRow] = copiedRow;
         }
+        cursorCol = max(0, min(cursorCol, (int)(sequence.columns.size()-1)));
+        cursorRow = max(0, min(cursorRow, (int)(column.rows.size()-1)));
     }
     virtual void Render() {
         static char TEXBUF[256];
