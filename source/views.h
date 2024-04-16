@@ -38,8 +38,6 @@ public:
 
         if((held & KEY_L) && (keys & KEY_START)) {
             Sequencer::getInstance()->Reset();
-        } else if((held & KEY_R) && (keys & KEY_START)) {
-            sequence.Reset();
         } else if(keys & KEY_START) {
             if(sequence.playing) {
                 sequence.playing = false;

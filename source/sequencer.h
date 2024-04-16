@@ -29,16 +29,28 @@ public:
                 return 'M';
                 break;
             case 4:
-                return 'F';
+                return 'm';
                 break;
             case 5:
-                return 'T';
+                return 'F';
                 break;
             case 6:
-                return 'S';
+                return 'f';
                 break;
             case 7:
+                return 'B';
+                break;
+            case 8:
+                return 'b';
+                break;
+            case 9:
                 return 'V';
+                break;
+            case 10:
+                return 'S';
+                break;
+            case 11:
+                return 'T';
                 break;
             default:
                 return '?';
@@ -103,6 +115,7 @@ public:
 
 class Sequencer {
 public:
+    bool playing = false;
     vector<Sequence> sequences;
     vector<Row> rows; // vector that accumulates rows that need to be processed
     int seqIndex = -1;
@@ -134,8 +147,13 @@ public:
                 case 'F':
                     synth.voices[voice].modFreqCoef = row.value;
                     break;
+                case 'f':
+                    synth.voices[voice].modFreqEnvCoef = (s8)row.value;
                 case 'M':
-                    synth.voices[voice].modAmount = row.value;
+                    synth.voices[voice].modCoef = row.value;
+                    break;
+                case 'm':
+                    synth.voices[voice].modEnvCoef = (s8)row.value;
                     break;
                 case 'T':
                     if(row.value > 0) {
@@ -153,6 +171,14 @@ public:
                     break;
                 case 'V':
                     sequences[sequenceIndex].voice = wrap(row.value, synth.voices.size());
+                    break;
+                case 'B':
+                    synth.voices[voice].feedbackCoef = row.value;
+                    break;
+                case 'b':
+                    synth.voices[voice].feedbackEnvCoef = (s8)row.value;
+                    break;
+                default:
                     break;
             }
         }
