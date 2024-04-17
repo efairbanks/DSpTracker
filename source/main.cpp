@@ -31,8 +31,6 @@ void init() {
 	bottomScreenViews.push_back((View*)(new ScopeView));
 	bottomScreenViews.push_back((View*)(new ControlsView));
 	bottomScreenViews.push_back((View*)(new CommandView));
-
-	sequencer->getInstance()->sequences[0].columns[0].rows[0].value = test;
 }
 
 void handleInput() {
