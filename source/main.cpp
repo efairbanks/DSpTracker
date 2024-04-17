@@ -27,6 +27,7 @@ void init() {
 	soundEngine = SoundEngine::getInstance();
 	topScreenViews.push_back((View*)(new SequencerView()));
 	topScreenViews.push_back((View*)(new ScopeView));
+	bottomScreenViews.push_back((View*)(new TextTestView));
 	bottomScreenViews.push_back((View*)(new SequencerView()));
 	bottomScreenViews.push_back((View*)(new ScopeView));
 	bottomScreenViews.push_back((View*)(new ControlsView));
