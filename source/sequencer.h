@@ -4,6 +4,8 @@
 #include <nds.h>
 #include <stdio.h>
 #include <vector>
+#include <iostream>
+#include <fstream>
 
 #include "utils.h"
 #include "synth.h"
@@ -59,6 +61,14 @@ public:
     }
     u8 key;
     u8 value;
+    void serialize(ofstream& stream) {
+        stream.write((char*)(&key), sizeof(key));
+        stream.write((char*)(&value), sizeof(value));
+    }
+    void deserialize(ifstream& stream) {
+        stream.read((char*)(&key), sizeof(key));
+        stream.read((char*)(&value), sizeof(value));
+    }
     Row() {
         key = 0;
         value = 0;
@@ -72,6 +82,30 @@ public:
     int tick;
     u8 ticksPerStep = 16;
     int lastSubSequence = -1;
+    void serialize(ofstream& stream) {
+        stream.write((char*)(&index), sizeof(index));
+        stream.write((char*)(&tick), sizeof(tick));
+        stream.write((char*)(&ticksPerStep), sizeof(ticksPerStep));
+        stream.write((char*)(&lastSubSequence), sizeof(lastSubSequence));
+        int numRows = rows.size();
+        stream.write((char*)(&numRows), sizeof(numRows));
+        for(int i=0; i<numRows; i++) {
+            rows[i].serialize(stream);
+        }
+    }
+    void deserialize(ifstream& stream) {
+        stream.read((char*)(&index), sizeof(index));
+        stream.read((char*)(&tick), sizeof(tick));
+        stream.read((char*)(&ticksPerStep), sizeof(ticksPerStep));
+        stream.read((char*)(&lastSubSequence), sizeof(lastSubSequence));
+        int numRows = rows.size();
+        stream.read((char*)(&numRows), sizeof(numRows));
+        rows.clear();
+        for(int i=0; i<numRows; i++) {
+            rows.push_back(Row());
+            rows[i].deserialize(stream);
+        }
+    }
     Column(u32 length=1) {
         index = -1;
         tick = -1;
@@ -103,6 +137,26 @@ public:
     bool playing;
     int voice;
     vector<Column> columns;
+    void serialize(ofstream& stream) {
+        stream.write((char*)(&playing), sizeof(playing));
+        stream.write((char*)(&voice), sizeof(voice));
+        int numCols = columns.size();
+        stream.write((char*)(&numCols), sizeof(numCols));
+        for(int i=0; i<numCols; i++) {
+            columns[i].serialize(stream);
+        }
+    }
+    void deserialize(ifstream& stream) {
+        stream.read((char*)(&playing), sizeof(playing));
+        stream.read((char*)(&voice), sizeof(voice));
+        int numCols = columns.size();
+        stream.read((char*)(&numCols), sizeof(numCols));
+        columns.clear();
+        for(int i=0; i<numCols; i++) {
+            columns.push_back(Column());
+            columns[i].deserialize(stream);
+        }
+    }
     Sequence() {
         columns.push_back(Column(1));
         playing = false;
@@ -118,7 +172,22 @@ public:
     bool playing = false;
     vector<Sequence> sequences;
     vector<Row> rows; // vector that accumulates rows that need to be processed
-    int seqIndex = -1;
+    void serialize(ofstream& stream) {
+        int numSeqs = sequences.size();
+        stream.write((char*)(&numSeqs), sizeof(numSeqs));
+        for(int i=0; i<numSeqs; i++) {
+            sequences[i].serialize(stream);
+        }
+    }
+    void deserialize(ifstream& stream) {
+        int numSeqs = sequences.size();
+        stream.read((char*)(&numSeqs), sizeof(numSeqs));
+        sequences.clear();
+        for(int i=0; i<numSeqs; i++) {
+            sequences.push_back(Sequence());
+            sequences[i].deserialize(stream);
+        }
+    }
     static Sequencer * getInstance() {
         if(nullptr == instance) {
             instance = new Sequencer();

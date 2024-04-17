@@ -1,6 +1,12 @@
 #include <nds.h>
+#include <fat.h>
 #include <gl2d.h>
 #include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <dirent.h>
+#include <iostream>
+#include <fstream>
 
 #include "views.h"
 
@@ -15,6 +21,7 @@ int bottomScreenView = 1;
 bool flipped = 0;
 
 void init() {
+	fatInitDefault();
 	sequencer = Sequencer::getInstance();
 	graphicsEngine = GraphicsEngine::getInstance();
 	soundEngine = SoundEngine::getInstance();
@@ -24,12 +31,33 @@ void init() {
 	bottomScreenViews.push_back((View*)(new ScopeView));
 	bottomScreenViews.push_back((View*)(new ControlsView));
 	bottomScreenViews.push_back((View*)(new CommandView));
+
+	sequencer->getInstance()->sequences[0].columns[0].rows[0].value = test;
 }
 
 void handleInput() {
 	scanKeys();
 	int keys = keysDown();
 	int held = keysHeld();
+
+	if((held & KEY_L) && (held & KEY_R)) {
+		if(keys & KEY_START) {
+			ofstream ostream;
+			ostream.open("trackersave.bin", ofstream::binary);
+			ostream.clear();
+			ostream.seekp(0);
+			sequencer->serialize(ostream);
+			ostream.close();
+		}
+		if(keys & KEY_SELECT) {
+			ifstream istream;
+			istream.open("trackersave.bin", ifstream::binary);
+			istream.clear();
+			istream.seekg(0);
+			sequencer->deserialize(istream);
+			istream.close();
+		}
+	}
 
 	if(held & KEY_SELECT) {
 		if(keys & KEY_UP) topScreenView = wrap(topScreenView+1, topScreenViews.size());
