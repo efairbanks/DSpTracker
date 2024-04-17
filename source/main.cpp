@@ -1,6 +1,12 @@
 #include <nds.h>
+#include <fat.h>
 #include <gl2d.h>
 #include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <dirent.h>
+#include <iostream>
+#include <fstream>
 
 #include "views.h"
 
@@ -8,18 +14,23 @@ GraphicsEngine* graphicsEngine;
 SoundEngine* soundEngine;
 Sequencer* sequencer;
 
-std::vector<View*> views;
+std::vector<View*> topScreenViews;
+std::vector<View*> bottomScreenViews;
 int topScreenView = 0;
 int bottomScreenView = 1;
+bool flipped = 0;
 
 void init() {
+	fatInitDefault();
 	sequencer = Sequencer::getInstance();
 	graphicsEngine = GraphicsEngine::getInstance();
 	soundEngine = SoundEngine::getInstance();
-	views.push_back((View*)(new SequencerView()));
-	views.push_back((View*)(new ControlsView));
-	views.push_back((View*)(new CommandView));
-	views.push_back((View*)(new ScopeView));
+	topScreenViews.push_back((View*)(new SequencerView()));
+	topScreenViews.push_back((View*)(new ScopeView));
+	bottomScreenViews.push_back((View*)(new SequencerView()));
+	bottomScreenViews.push_back((View*)(new ScopeView));
+	bottomScreenViews.push_back((View*)(new ControlsView));
+	bottomScreenViews.push_back((View*)(new CommandView));
 }
 
 void handleInput() {
@@ -27,22 +38,54 @@ void handleInput() {
 	int keys = keysDown();
 	int held = keysHeld();
 
+	if((held & KEY_L) && (held & KEY_R)) {
+		if(keys & KEY_START) {
+			ofstream ostream;
+			ostream.open("trackersave.bin", ofstream::binary);
+			ostream.clear();
+			ostream.seekp(0);
+			sequencer->serialize(ostream);
+			ostream.close();
+		}
+		if(keys & KEY_SELECT) {
+			ifstream istream;
+			istream.open("trackersave.bin", ifstream::binary);
+			istream.clear();
+			istream.seekg(0);
+			sequencer->deserialize(istream);
+			istream.close();
+		}
+	}
+
 	if(held & KEY_SELECT) {
-		if(keys & KEY_UP) topScreenView = wrap(topScreenView+1, views.size());
-		if(keys & KEY_DOWN) topScreenView = wrap(topScreenView-1, views.size());
-		if(keys & KEY_LEFT) bottomScreenView = wrap(bottomScreenView+1, views.size());
-		if(keys & KEY_RIGHT) bottomScreenView = wrap(bottomScreenView-1, views.size());
+		if(keys & KEY_UP) topScreenView = wrap(topScreenView+1, topScreenViews.size());
+		if(keys & KEY_DOWN) topScreenView = wrap(topScreenView-1, topScreenViews.size());
+		if(keys & KEY_LEFT) bottomScreenView = wrap(bottomScreenView+1, bottomScreenViews.size());
+		if(keys & KEY_RIGHT) bottomScreenView = wrap(bottomScreenView-1, bottomScreenViews.size());
+		if(keys & KEY_R) flipped = !flipped;
 	} else {
-		views[topScreenView]->HandleInput(keys, held);
+		if(flipped) {
+			bottomScreenViews[bottomScreenView]->HandleInput(keys, held);
+		} else {
+			topScreenViews[topScreenView]->HandleInput(keys, held);
+		}
 	}
 }
 
 void drawTopScreen() {
-	views[topScreenView]->Render();
+	if(flipped) {
+		bottomScreenViews[bottomScreenView]->Render();
+	} else {
+		topScreenViews[topScreenView]->Render();
+	}
 }
 
 void drawBottomScreen() {
-	views[bottomScreenView]->Render();
+	if(!flipped) {
+		bottomScreenViews[bottomScreenView]->Render();
+	} else {
+		topScreenViews[topScreenView]->Render();
+	}
 }
 
 int main( void ) {

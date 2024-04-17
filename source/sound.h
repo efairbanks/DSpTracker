@@ -13,8 +13,8 @@ public:
     static SoundEngine * getInstance() {
         if(nullptr == instance) {
             instance = new SoundEngine();
-            instance->allpass = new Allpass(400, -4020);
-            instance->lfo.SetFreq(B32_1HZ_DELTA>>8);
+            //instance->allpass = new Allpass(400, -4020);
+            //instance->lfo.SetFreq(B32_1HZ_DELTA>>8);
 
             // initialize maxmod without any soundbank (unusual setup)
             mm_ds_system sys;
@@ -36,45 +36,15 @@ public:
         }
         return instance;
     };
-    Voice voices[3];
-    Metro metro;
     Scope scope;
-    Allpass* allpass;
-    BrownNoise noise;
-    Lowpass lowpass;
-    SinOsc lfo;
+    Synth synth;
     s16 Process() {
-        if(metro.Process()) {
+        if(synth.GetTick()) {
             Sequencer* sequencer = Sequencer::getInstance();
-            for(int i=0; i<sequencer->sequence.columns.size(); i++) {
-                sequencer->sequence.columns[i].Increment();
-                Row row = sequencer->sequence.columns[i].GetRow();
-                if(row.key > 0) {
-                    switch(Row::KeyToChar(row.key)) {
-                        case 'N':
-                            voices[0].PlayNote(Sequencer::getInstance()->NoteToFreq(row.value>>4, row.value & 0xF));
-                            break;
-                        case 'E':
-                            voices[0].line.delta = (B32_1HZ_DELTA*8*row.value)>>4;
-                            break;
-                        case 'F':
-                            voices[0].modFreqCoef = row.value;
-                            break;
-                        case 'M':
-                            voices[0].modAmount = row.value;
-                            break;
-                        case 'T':
-                            metro.delta = B32_1HZ_DELTA*(row.value+1);
-                            break;
-                    }
-                } 
-            }
+            sequencer->ProcessTick(synth);
         }
-        s16 out = 0;
-        for(int i=0; i<3; i++) out += voices[i].Process();
-        s16 nse = noise.Process();
-        s16 verb = allpass->Process(out>>2, 0);
-        out += lowpass.Process(verb);
+
+        s16 out = synth.Process();
         scope.Process(out);
         return out;
     }

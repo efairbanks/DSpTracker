@@ -47,8 +47,8 @@ public:
     void SetFreq(u32 freq) {
         delta = B32_1HZ_DELTA * freq;
     }
-    s16 Process(s16 phaseMod=0) {
-        phase += delta;
+    s16 Process(s16 phaseMod=0, s16 deltaMod=0) {
+        phase += delta + deltaMod;
         s16 out = sinLerp(((s16)(phase>>17)) + phaseMod);
         return out;
     }
@@ -86,6 +86,7 @@ public:
     }
 };
 
+#define METRO_1BPM_DELTA ((B32_1HZ_DELTA*64)/60)
 class Metro {
 public:
     u32 phase;
@@ -93,7 +94,7 @@ public:
     u32 lastPhase;
     void Init() {
         phase = 0xFFFFFFFF;
-        delta = B32_1HZ_DELTA * 4;
+        delta = METRO_1BPM_DELTA * 120;
         lastPhase = 0;
     }
     Metro() {
@@ -117,13 +118,23 @@ public:
     Line line;
     SinOsc modulator;
     SinOsc carrier;
-    s16 modAmount;
+    s16 modCoef;
     s16 modFreqCoef;
+    s16 feedbackCoef;
+    s16 modEnvCoef;
+    s16 modFreqEnvCoef;
+    s16 feedbackEnvCoef;
+    s16 lastVal;
     Voice() {
         line.Init();
         carrier.Init();
-        modAmount = 0x10;
+        modCoef = 0x10;
         modFreqCoef = 0x08;
+        feedbackCoef = 0x00;
+        modEnvCoef = 0x00;
+        modFreqEnvCoef = 0x00;
+        feedbackEnvCoef = 0x00;
+        lastVal = 0;
     }
     void PlayNote(int freq) {
         line.Reset();
@@ -133,7 +144,17 @@ public:
         carrier.SetFreq(freq);
     }
     s16 Process() {
-        return (carrier.Process((modulator.Process()*modAmount)>>3) * line.Process())>>12;
+        int out = 0;
+        if(line.firing) {
+            s16 m = modulator.Process(((lastVal*feedbackCoef)>>4) + ((lastVal*feedbackEnvCoef)>>4));
+            s16 env = line.Process();
+            out = carrier.Process(((m*modCoef)>>4) + ((((env*modEnvCoef)>>4)*m)>>12), (env*modFreqCoef)>>4);
+            lastVal = out;
+            out = (out * env)>>12;
+        } else {
+            lastVal = 0;
+        }
+        return out;
     }
 };
 
@@ -238,6 +259,26 @@ public:
         in = in<<8;
         last = ((in*coef)>>8) + (last*((1<<8)-coef)>>8);
         return last>>8;
+    }
+};
+
+class Synth {
+public:
+    vector<Voice> voices;
+    Metro metro;
+    Synth() {
+        for(int i=0; i<8; i++) voices.push_back(Voice());
+    }
+    bool GetTick() {
+        return metro.Process();
+    }
+    void PlayNote(int freq, int voice=0) {
+        voices[voice].PlayNote(freq);
+    }
+    s16 Process() {
+        s16 out = 0;
+        for(int i=0; i<voices.size(); i++) out += voices[i].Process();
+        return out;
     }
 };
 
