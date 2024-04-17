@@ -34,6 +34,7 @@ extern const unsigned int font_si_texcoords[] = {
  8, 8, 8, 8,
  16, 8, 8, 8,
  24, 8, 8, 8,
+ 56, 0, 8, 8,
  32, 8, 8, 8,
  40, 8, 8, 8,
  48, 8, 8, 8,

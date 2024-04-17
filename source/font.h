@@ -89,7 +89,7 @@ void Cglfont::Print( int x, int y, const char *text )
 	
 	while( *text )
 	{
-		font_char = ( *(unsigned char*)text++ ) - 33;
+		font_char = ( *(unsigned char*)text++ ) - 32;
 		glSprite( x, y, GL_FLIP_NONE, &font_sprite[font_char] );
 		x += font_sprite[font_char].width; 
 	}
@@ -125,7 +125,7 @@ void Cglfont::PrintCentered( int x, int y, const char *text )
 	
 	while( *text )
 	{
-		font_char = ( *(unsigned char*)text++ ) - 33;
+		font_char = ( *(unsigned char*)text++ ) - 32;
 		total_width += font_sprite[font_char].width; 
 	}
 	
@@ -134,7 +134,7 @@ void Cglfont::PrintCentered( int x, int y, const char *text )
 	text = o_text;
 	while( *text )
 	{
-		font_char = (*(unsigned char*)text++) - 33;
+		font_char = (*(unsigned char*)text++) - 32;
 		glSprite( x, y, GL_FLIP_NONE, &font_sprite[font_char] );
 		x += font_sprite[font_char].width-2;
 	}

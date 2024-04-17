@@ -183,6 +183,8 @@ class TextTestView {
         printf(0,32, RGB15(31,31,31), "`1234567890-=");
         printf(0,48, RGB15(31,31,31), "~!@#$%^&*()_+");
         printf(0,64, RGB15(31,31,31), "[]\\;',./{}|:\"<>?");
+        printf(0,72, RGB15(31,31,31), "A B C D E F G H I J K L M N O");
+        printf(0,80, RGB15(31,31,31), "P Q R S T U V W X Y Z");
     }
 };
 
