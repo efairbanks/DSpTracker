@@ -15,8 +15,7 @@ jobs:
 
       - name: Upload NDS
         uses: softprops/action-gh-release@v2
-        # if you want this to run only on tagged commits uncomment below
-        # if: startsWith(github.ref, 'refs/tags/')
+        if: startsWith(github.ref, 'refs/tags/')
         with:
           files: DSpTracker.nds
         
