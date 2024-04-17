@@ -175,4 +175,15 @@ public:
     }
 };
 
+class TextTestView {
+    virtual void HandleInput(int keys, int held) {}
+    virtual void Render() {
+        printf(0,0, RGB15(31,31,31), "ABCDEFGHIJKLMNOPQRSTUVWXYZ");
+        printf(0,16, RGB15(31,31,31), "abcdefghijklmnopqrstuvwxyz");
+        printf(0,32, RGB15(31,31,31), "`1234567890-=");
+        printf(0,48, RGB15(31,31,31), "~!@#$%^&*()_+");
+        printf(0,64, RGB15(31,31,31), "[]\\;',./{}|:\"<>?");
+    }
+};
+
 #endif
