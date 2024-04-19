@@ -48,7 +48,7 @@ public:
         delta = B32_1HZ_DELTA * freq;
     }
     s16 Process(s16 phaseMod=0, s16 deltaMod=0) {
-        phase += delta + deltaMod;
+        phase += delta + (deltaMod<<16);
         s16 out = sinLerp(((s16)(phase>>17)) + phaseMod);
         return out;
     }
@@ -82,7 +82,7 @@ public:
             lastPhase = phase;
             phase -= delta;
         }
-        return (out*out)>>12;
+        return out;
     }
 };
 
@@ -123,7 +123,10 @@ public:
     s16 feedbackCoef;
     s16 modEnvCoef;
     s16 modFreqEnvCoef;
+    s16 carFreqEnvCoef;
     s16 feedbackEnvCoef;
+    s16 ampCurve;
+    s16 modCurve;
     s16 lastVal;
     Voice() {
         line.Init();
@@ -133,24 +136,40 @@ public:
         feedbackCoef = 0x00;
         modEnvCoef = 0x00;
         modFreqEnvCoef = 0x00;
+        carFreqEnvCoef = 0x00;
         feedbackEnvCoef = 0x00;
+        ampCurve = 0x00;
+        modCurve = 0x00;
         lastVal = 0;
     }
     void PlayNote(int freq) {
         line.Reset();
         modulator.Reset();
-        modulator.SetFreq((freq*modFreqCoef)>>3);
+        modulator.SetFreq((freq*modFreqCoef)>>4);
         carrier.Reset();
         carrier.SetFreq(freq);
     }
     s16 Process() {
         int out = 0;
         if(line.firing) {
-            s16 m = modulator.Process(((lastVal*feedbackCoef)>>4) + ((lastVal*feedbackEnvCoef)>>4));
             s16 env = line.Process();
-            out = carrier.Process(((m*modCoef)>>4) + ((((env*modEnvCoef)>>4)*m)>>12), (env*modFreqCoef)>>4);
-            lastVal = out;
-            out = (out * env)>>12;
+            s16 expEnv = FPMUL(env,env,12);
+                expEnv = FPMUL(expEnv,expEnv,12);
+                expEnv = FPMUL(expEnv,expEnv,12);
+
+            s16 ampEnv = FPMUL(env,0xF-ampCurve,4) + FPMUL(expEnv,ampCurve,4);
+            s16 modEnv = FPMUL(env,0xF-modCurve,4) + FPMUL(expEnv,modCurve,4);
+
+            s16 mPhaseMod = FPMUL(lastVal,feedbackCoef,4) + FPMUL(FPMUL(lastVal,modEnv,12),feedbackEnvCoef,4);
+            s16 mFreqMod = FPMUL(modEnv,modFreqEnvCoef,4);
+            s16 m = modulator.Process(mPhaseMod, mFreqMod);
+            s16 cPhaseMod = FPMUL(m,modCoef,4) + FPMUL(FPMUL(modEnv,modEnvCoef,4),m,12);
+            s16 cFreqMod = FPMUL(modEnv,carFreqEnvCoef,4);
+
+            s16 c = carrier.Process(cPhaseMod,cFreqMod);
+            lastVal = c;
+            
+            out = (c*ampEnv)>>12;
         } else {
             lastVal = 0;
         }

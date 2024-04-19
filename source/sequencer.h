@@ -46,12 +46,18 @@ public:
                 return 'b';
                 break;
             case 9:
-                return 'V';
+                return 'p';
                 break;
             case 10:
-                return 'S';
+                return 'c';
                 break;
             case 11:
+                return 'V';
+                break;
+            case 12:
+                return 'S';
+                break;
+            case 13:
                 return 'T';
                 break;
             default:
@@ -218,11 +224,15 @@ public:
                     break;
                 case 'f':
                     synth.voices[voice].modFreqEnvCoef = (s8)row.value;
+                    break;
                 case 'M':
                     synth.voices[voice].modCoef = row.value;
                     break;
                 case 'm':
                     synth.voices[voice].modEnvCoef = (s8)row.value;
+                    break;
+                case 'p':
+                    synth.voices[voice].carFreqEnvCoef = (u8)row.value;
                     break;
                 case 'T':
                     if(row.value > 0) {
@@ -246,6 +256,10 @@ public:
                     break;
                 case 'b':
                     synth.voices[voice].feedbackEnvCoef = (s8)row.value;
+                    break;
+                case 'c':
+                    synth.voices[voice].ampCurve = (row.value & 0xF0)>>4;
+                    synth.voices[voice].modCurve = (row.value & 0x0F);
                     break;
                 default:
                     break;

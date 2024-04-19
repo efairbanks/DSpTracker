@@ -8,4 +8,6 @@ int wrap(int x, int len) {
     return x;
 }
 
+#define FPMUL(x, y, b) (((x)*(y))>>(b))
+
 #endif UTILS_H
