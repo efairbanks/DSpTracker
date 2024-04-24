@@ -122,7 +122,7 @@ public:
                     printf(0, 8*rowIndex, RGB15(31,31,31), "%2d", rowIndex);
                     u16 rowColor = Sequencer::getInstance()->sequences[currentSequence].columns[columnIndex].index == rowIndex ? RGB15(31,31,31) : RGB15(20,20,20);
                     if(rowIndex == cursorRow && columnIndex == cursorCol) rowColor = RGB15(0,0,0);
-                    printf(columnIndex*colPadding+24, rowIndex*8, rowColor, "%1c%02X ", Row::KeyToChar(column.rows[rowIndex].key), column.rows[rowIndex].value);
+                    printf(columnIndex*colPadding+24, rowIndex*8, rowColor, "%1c%02X ", Sequencer::KeyToChar(column.rows[rowIndex].key), column.rows[rowIndex].value);
                     maxRowIndex = std::max(maxRowIndex, rowIndex);
                 }
             }

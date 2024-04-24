@@ -16,55 +16,6 @@ u32 NOTE_FREQ_TABLE[12] = {4186, 4435, 4698, 4978, 5274, 5588, 5920, 6272, 6645,
 
 class Row {
 public:
-    static char KeyToChar(int key) {
-        switch(key) {
-            case 0:
-                return '-';
-                break;
-            case 1:
-                return 'N';
-                break;
-            case 2:
-                return 'E';
-                break;
-            case 3:
-                return 'M';
-                break;
-            case 4:
-                return 'm';
-                break;
-            case 5:
-                return 'F';
-                break;
-            case 6:
-                return 'f';
-                break;
-            case 7:
-                return 'B';
-                break;
-            case 8:
-                return 'b';
-                break;
-            case 9:
-                return 'p';
-                break;
-            case 10:
-                return 'c';
-                break;
-            case 11:
-                return 'V';
-                break;
-            case 12:
-                return 'S';
-                break;
-            case 13:
-                return 'T';
-                break;
-            default:
-                return '?';
-                break;
-        }
-    }
     u8 key;
     u8 value;
     void serialize(ofstream& stream) {
@@ -207,17 +158,26 @@ public:
             sequences[i].Reset();
         }
     }
+    static char KeyToChar(int key) {
+        const char commandChars[] = {'N','E','M','m','F','f','B','b','p','c','V','S','T'};
+        key = wrap(key, sizeof(commandChars)+1);
+        if(key == 0) {
+            return '-';
+        } else {
+            return commandChars[key-1];
+        }
+    }
     bool ProcessRow(Row& row, int sequenceIndex, int columnIndex, Synth& synth) {
         bool tickProcessed = false;
         if(row.key > 0) {
             tickProcessed = true;
             int voice = sequences[sequenceIndex].voice;
-            switch(Row::KeyToChar(row.key)) {
+            switch(Sequencer::KeyToChar(row.key)) {
                 case 'N':
                     synth.voices[voice].PlayNote(NoteToFreq(row.value>>4, row.value & 0xF));
                     break;
                 case 'E':
-                    synth.voices[voice].line.delta = (B32_1HZ_DELTA*8*row.value)>>4;
+                    synth.voices[voice].line.fallingDelta = (B32_1HZ_DELTA*8*row.value)>>4;
                     break;
                 case 'F':
                     synth.voices[voice].modFreqCoef = row.value;

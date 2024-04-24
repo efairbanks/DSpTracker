@@ -56,33 +56,57 @@ public:
 
 class Line {
 public:
+    typedef enum LineStage {
+        STAGE_RISING,
+        STAGE_FALLING,
+        STAGE_IDLE
+    };
     u32 phase;
-    u32 delta;
+    u32 risingDelta;
+    u32 fallingDelta;
     u32 lastPhase;
-    bool firing;
+    int stage;
     void Init() {
         phase = 0xFFFFFFFF;
-        delta = B32_1HZ_DELTA * 2;
+        risingDelta = B32_1HZ_DELTA * 500;
+        fallingDelta = B32_1HZ_DELTA * 2;
         lastPhase = 0xFFFFFFFF;
-        firing = false;
+        stage = STAGE_IDLE;
     }
     Line() {
         Init();
     }
     void Reset() {
-        phase = 0xFFFFFFFF;
-        lastPhase = 0xFFFFFFFF;
-        firing = true;
+        phase = 0;
+        lastPhase = 0;
+        stage = STAGE_RISING;
     }
     s16 Process() {
         s16 out = 0;
-        if(phase > lastPhase) firing = false;
-        if(firing) {
-            out = phase>>(32-12);
-            lastPhase = phase;
-            phase -= delta;
+        switch(stage) {
+            case STAGE_RISING:
+                lastPhase = phase;
+                phase += risingDelta;
+                if(phase < lastPhase) {
+                    stage = STAGE_FALLING;
+                    phase = 0xFFFFFFFF;
+                    lastPhase = 0xFFFFFFFF;
+                }
+                break;
+            case STAGE_FALLING:
+                lastPhase = phase;
+                phase -= fallingDelta;
+                if(phase > lastPhase) {
+                    stage = STAGE_IDLE;
+                    phase = 0;
+                    lastPhase = 0;
+                }
+                break;
+            case STAGE_IDLE:
+                return 0;
+                break;
         }
-        return out;
+        return phase>>(32-12);
     }
 };
 
@@ -151,7 +175,7 @@ public:
     }
     s16 Process() {
         int out = 0;
-        if(line.firing) {
+        if(line.stage != Line::STAGE_IDLE) {
             s16 env = line.Process();
             s16 expEnv = FPMUL(env,env,12);
                 expEnv = FPMUL(expEnv,expEnv,12);
