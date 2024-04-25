@@ -264,6 +264,75 @@ public:
     }
 };
 
+class FastComb {
+public:
+    s32* buffer;
+    u16 index;
+    u16 indexMask;
+    u16 delay;
+    ~FastComb() {
+        free(buffer);
+    }
+    void Init(int delaySamples = 173) {
+        int length = 1;
+        while(length<delaySamples) length = length<<1;
+        buffer = (s32*)malloc(sizeof(s32)*length);
+        for(int i=0; i<length; i++) buffer[i] = 0;
+        indexMask = length-1;
+        delay = delaySamples;
+        index = 0;
+    }
+    s16 Process(s32 in, s16 coef) {
+        s32 out = 0;
+        s16 invCoef = 0x100 - coef;
+        out = buffer[((u16)(index-delay))&indexMask];
+        buffer[index] = (in<<4);
+        index = (index+1)&indexMask;
+        return (s16)((in + out)>>4);
+    }
+};
+
+class FastAllpass {
+public:
+    FastComb comb;
+    FastComb invComb;
+    s32 lastVal;
+    FastAllpass() {}
+    void Init(int delaySamples=173) {
+        comb.Init(delaySamples);
+        invComb.Init(delaySamples);
+        lastVal = 0;
+    }
+    s16 Process(s16 in, s16 apCoef, s16 fbCoef) {
+        lastVal = invComb.Process(comb.Process(FPMUL(in,(0x100-fbCoef),8) + FPMUL(lastVal,fbCoef,8), apCoef), -apCoef);
+        return lastVal;
+    }
+};
+
+class Reverb {
+public:
+    FastAllpass allpasses[4];
+    s16 coef;
+    s32 lastVal = 0;
+    Reverb() {
+        coef = 0x10;
+        allpasses[0].Init(503);
+        allpasses[1].Init(701);
+        allpasses[2].Init(907);
+        allpasses[3].Init(1103);
+    }
+    s16 Process(s32 in) {
+        u32 out = 0;
+        coef = 0xff;
+        for(int i=0; i<4; i++) {
+            out += allpasses[i].Process(in - FPMUL(lastVal,coef,8), 0xff, 0xf);
+        }
+        out = out>>2;
+        lastVal = out;
+        return lastVal;
+    }
+};
+
 class Allpass {
 public:
     Comb* a;

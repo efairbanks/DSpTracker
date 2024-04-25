@@ -38,13 +38,14 @@ public:
     };
     Scope scope;
     Synth synth;
+    Reverb reverb;
     s16 Process() {
         if(synth.GetTick()) {
             Sequencer* sequencer = Sequencer::getInstance();
             sequencer->ProcessTick(synth);
         }
-
-        s16 out = synth.Process();
+        reverb.coef=0xff;
+        s16 out = reverb.Process(synth.Process());
         scope.Process(out);
         return out;
     }
