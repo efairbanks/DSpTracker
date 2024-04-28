@@ -44,8 +44,8 @@ public:
             Sequencer* sequencer = Sequencer::getInstance();
             sequencer->ProcessTick(synth);
         }
-        reverb.coef=0xff;
-        s16 out = reverb.Process(synth.Process());
+        s16 out = synth.Process();
+        out = out + reverb.Process(out>>1);
         scope.Process(out);
         return out;
     }
