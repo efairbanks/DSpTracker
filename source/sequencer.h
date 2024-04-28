@@ -159,7 +159,7 @@ public:
         }
     }
     static char KeyToChar(int key) {
-        const char commandChars[] = {'N','E','M','m','F','f','B','b','p','c','V','S','T'};
+        const char commandChars[] = {'N','A','E','e','M','m','F','f','B','b','p','c','R','V','S','T'};
         key = wrap(key, sizeof(commandChars)+1);
         if(key == 0) {
             return '-';
@@ -172,12 +172,23 @@ public:
         if(row.key > 0) {
             tickProcessed = true;
             int voice = sequences[sequenceIndex].voice;
+            s32 deltaCoef = row.value;
             switch(Sequencer::KeyToChar(row.key)) {
                 case 'N':
                     synth.voices[voice].PlayNote(NoteToFreq(row.value>>4, row.value & 0xF));
                     break;
+                case 'A':
+                    synth.voices[voice].amp = row.value;
+                    break;
                 case 'E':
-                    synth.voices[voice].line.fallingDelta = (B32_1HZ_DELTA*8*row.value)>>4;
+                    deltaCoef = 0xFF-deltaCoef;
+                    deltaCoef *= deltaCoef;
+                    synth.voices[voice].line.fallingDelta = (B32_1HZ_DELTA>>8) * deltaCoef;
+                    break;
+                case 'e':
+                    deltaCoef = 0xFF-deltaCoef;
+                    deltaCoef *= deltaCoef;
+                    synth.voices[voice].line.risingDelta = (B32_1HZ_DELTA>>8) * deltaCoef;
                     break;
                 case 'F':
                     synth.voices[voice].modFreqCoef = row.value;
@@ -193,6 +204,9 @@ public:
                     break;
                 case 'p':
                     synth.voices[voice].carFreqEnvCoef = (u8)row.value;
+                    break;
+                case 'R':
+                    synth.voices[voice].verbAmp = (u8)row.value;
                     break;
                 case 'T':
                     if(row.value > 0) {
@@ -235,8 +249,14 @@ public:
             if(sequence.playing) {
                 for(int columnIndex=0; columnIndex<sequence.columns.size(); columnIndex++) {
                     Column& column = sequence.columns[columnIndex];
-                    if(column.ProcessTick()) {
-                        ProcessRow(column.GetRow(), sequenceIndex, columnIndex, synth);
+                    if(column.ticksPerStep > 0) {
+                        if(column.ProcessTick()) {
+                            ProcessRow(column.GetRow(), sequenceIndex, columnIndex, synth);
+                        }
+                    } else {
+                        for(int rowIndex=0; rowIndex<column.rows.size(); rowIndex++) {
+                            ProcessRow(column.rows[rowIndex], sequenceIndex, columnIndex, synth);
+                        }
                     }
                 }
             }

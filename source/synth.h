@@ -152,6 +152,8 @@ public:
     s16 ampCurve;
     s16 modCurve;
     s16 lastVal;
+    s16 amp;
+    s16 verbAmp;
     Voice() {
         line.Init();
         carrier.Init();
@@ -164,6 +166,8 @@ public:
         feedbackEnvCoef = 0x00;
         ampCurve = 0x00;
         modCurve = 0x00;
+        amp = 0xc0;
+        verbAmp = 0x00;
         lastVal = 0;
     }
     void PlayNote(int freq) {
@@ -388,6 +392,7 @@ public:
 class Synth {
 public:
     vector<Voice> voices;
+    Reverb reverb;
     Metro metro;
     Synth() {
         for(int i=0; i<8; i++) voices.push_back(Voice());
@@ -400,8 +405,13 @@ public:
     }
     s16 Process() {
         s16 out = 0;
-        for(int i=0; i<voices.size(); i++) out += voices[i].Process();
-        return out;
+        s16 verbOut = 0;
+        for(int i=0; i<voices.size(); i++) {
+            s16 voiceOut = voices[i].Process();
+            out += FPMUL(voiceOut, voices[i].amp, 8);
+            verbOut += FPMUL(voiceOut, voices[i].verbAmp, 8);
+        }
+        return out + reverb.Process(verbOut);
     }
 };
 
