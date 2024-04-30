@@ -17,8 +17,8 @@ Sequencer* sequencer;
 std::vector<View*> topScreenViews;
 std::vector<View*> bottomScreenViews;
 int topScreenView = 0;
-int bottomScreenView = 1;
-bool flipped = 0;
+int bottomScreenView = 0;
+bool activeScreen = GraphicsEngine::SCREEN_TOP;
 
 void init() {
 	fatInitDefault();
@@ -28,8 +28,9 @@ void init() {
 	topScreenViews.push_back((View*)(new SequencerView()));
 	topScreenViews.push_back((View*)(new ScopeView));
 	//bottomScreenViews.push_back((View*)(new TextTestView));
-	bottomScreenViews.push_back((View*)(new SequencerView()));
+	bottomScreenViews.push_back((View*)(new TableView));
 	bottomScreenViews.push_back((View*)(new ScopeView));
+	bottomScreenViews.push_back((View*)(new SequencerView()));
 	bottomScreenViews.push_back((View*)(new ControlsView));
 	bottomScreenViews.push_back((View*)(new CommandView));
 }
@@ -59,45 +60,59 @@ void handleInput() {
 	}
 
 	if(held & KEY_SELECT) {
-		if(keys & KEY_UP) topScreenView = wrap(topScreenView+1, topScreenViews.size());
-		if(keys & KEY_DOWN) topScreenView = wrap(topScreenView-1, topScreenViews.size());
-		if(keys & KEY_LEFT) bottomScreenView = wrap(bottomScreenView+1, bottomScreenViews.size());
-		if(keys & KEY_RIGHT) bottomScreenView = wrap(bottomScreenView-1, bottomScreenViews.size());
-		if(keys & KEY_R) flipped = !flipped;
+		if(keys & KEY_UP) activeScreen = !activeScreen;
+		if(keys & KEY_DOWN) activeScreen = !activeScreen;
+		if(keys & KEY_LEFT) {
+			if(activeScreen == GraphicsEngine::SCREEN_BOTTOM) {
+				bottomScreenView = wrap(bottomScreenView-1, bottomScreenViews.size());
+			} else {
+				topScreenView = wrap(topScreenView-1, topScreenViews.size());
+			}
+		}
+		if(keys & KEY_RIGHT) {
+			if(activeScreen == GraphicsEngine::SCREEN_BOTTOM) {
+				bottomScreenView = wrap(bottomScreenView+1, bottomScreenViews.size());
+			} else {
+				topScreenView = wrap(topScreenView+1, topScreenViews.size());
+			}
+		}
 	} else {
-		if(flipped) {
+		if(activeScreen == GraphicsEngine::SCREEN_BOTTOM) {
 			bottomScreenViews[bottomScreenView]->HandleInput(keys, held);
 		} else {
 			topScreenViews[topScreenView]->HandleInput(keys, held);
 		}
+		bottomScreenViews[bottomScreenView]->HandleTouchInput(keys, held);
 	}
 }
 
 void drawTopScreen() {
-	if(flipped) {
-		bottomScreenViews[bottomScreenView]->Render();
-	} else {
-		topScreenViews[topScreenView]->Render();
-	}
+	topScreenViews[topScreenView]->Render();
 }
 
 void drawBottomScreen() {
-	if(!flipped) {
-		bottomScreenViews[bottomScreenView]->Render();
-	} else {
-		topScreenViews[topScreenView]->Render();
-	}
+	bottomScreenViews[bottomScreenView]->Render();
 }
 
 int main( void ) {
 	init();
-	while( 1 )
+	while(1)
 	{	
 		// always draw first
 		graphicsEngine->StartDrawing();
 		if(graphicsEngine->currentScreen == GraphicsEngine::SCREEN_TOP) {
+			if(activeScreen == GraphicsEngine::SCREEN_TOP) {
+				for(int i=1; i<8; i++) {
+					glBoxFilled(0+i*16, 0+i*12, SCREEN_WIDTH-i*16, SCREEN_HEIGHT-i*12, (i&0x1) == 0 ? RGB15(0,0,0) : RGB15(2,2,2));
+				}
+			}
 			drawTopScreen();
 		} else {
+			if(activeScreen == GraphicsEngine::SCREEN_BOTTOM) {
+				for(int i=1; i<8; i++) {
+					glBoxFilled(0+i*16, 0+i*12, SCREEN_WIDTH-i*16, SCREEN_HEIGHT-i*12, (i&0x1) == 0 ? RGB15(0,0,0) : RGB15(2,2,2));
+				}
+			}
 			drawBottomScreen();
 		}
 		graphicsEngine->StopDrawing();

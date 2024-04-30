@@ -124,19 +124,59 @@ public:
     }
 };
 
+class InstrumentTable {
+public:
+    vector<u8> values {0x40,0xc0,0xc0,0,0,0,0,0,0,0,0,0,0,0};
+    void serialize(ofstream& stream) {
+        int numVals = values.size();
+        stream.write((char*)(&numVals), sizeof(numVals));
+        for(int i=0; i<numVals; i++) {
+            u8 value = values[i];
+            stream.write((char*)(&value), sizeof(value));
+        }
+    }
+    void deserialize(ifstream& stream) {
+        int numVals = values.size();
+        stream.read((char*)(&numVals), sizeof(numVals));
+        values.clear();
+        for(int i=0; i<numVals; i++) {
+            u8 value;
+            stream.read((char*)(&value), sizeof(value));
+            values.push_back(value);
+        }
+    }
+    InstrumentTable() {}
+    ~InstrumentTable() {}
+    u8 GetValue(u8 key) {
+        if(key>=0 && key<values.size()) {
+            return values[key];
+        } else {
+            return 0;
+        }
+    }
+};
+
 class Sequencer {
 public:
     bool playing = false;
     vector<Sequence> sequences;
     vector<Row> rows; // vector that accumulates rows that need to be processed
+    vector<InstrumentTable> tables;
     void serialize(ofstream& stream) {
+        stream.write((char*)(&playing), sizeof(playing));
         int numSeqs = sequences.size();
         stream.write((char*)(&numSeqs), sizeof(numSeqs));
         for(int i=0; i<numSeqs; i++) {
             sequences[i].serialize(stream);
         }
+        int numTables = tables.size();
+        stream.write((char*)(&numTables), sizeof(numTables));
+        for(int i=0; i<numTables; i++) {
+            tables[i].serialize(stream);
+        }
     }
     void deserialize(ifstream& stream) {
+        stream.read((char*)(&playing), sizeof(playing));
         int numSeqs = sequences.size();
         stream.read((char*)(&numSeqs), sizeof(numSeqs));
         sequences.clear();
@@ -144,11 +184,21 @@ public:
             sequences.push_back(Sequence());
             sequences[i].deserialize(stream);
         }
+        int numTables = tables.size();
+        stream.read((char*)(&numTables), sizeof(numTables));
+        tables.clear();
+        for(int i=0; i<numTables; i++) {
+            tables.push_back(InstrumentTable());
+            tables[i].deserialize(stream);
+        }
     }
     static Sequencer * getInstance() {
         if(nullptr == instance) {
             instance = new Sequencer();
-            for(int i=0; i<256; i++) instance->sequences.push_back(Sequence());
+            for(int i=0; i<256; i++) {
+                instance->sequences.push_back(Sequence());
+                instance->tables.push_back(InstrumentTable());
+            }
         }
         return instance;
     };
@@ -158,24 +208,36 @@ public:
             sequences[i].Reset();
         }
     }
-    static char KeyToChar(int key) {
-        const char commandChars[] = {'N','A','E','e','M','m','F','f','B','b','p','c','R','V','S','T'};
-        key = wrap(key, sizeof(commandChars)+1);
+    char KeyToChar(int key) {
+        key = wrap(key, commandChars.size()+1);
         if(key == 0) {
             return '-';
         } else {
             return commandChars[key-1];
         }
     }
-    bool ProcessRow(Row& row, int sequenceIndex, int columnIndex, Synth& synth) {
+    vector<char> commandChars {'N','A','E','e','M','m','F','f','B','b','p','c','R','V','J','S','T','I','i'};
+    bool ProcessRow(Row& row, int sequenceIndex, int columnIndex, Synth& synth, bool triggerNote=true) {
         bool tickProcessed = false;
         if(row.key > 0) {
-            tickProcessed = true;
-            int voice = sequences[sequenceIndex].voice;
+            Sequence& sequence = sequences[sequenceIndex];
+            Column& column = sequence.columns[columnIndex];
             s32 deltaCoef = row.value;
-            switch(Sequencer::KeyToChar(row.key)) {
+            int voice = sequence.voice;
+            switch(KeyToChar(row.key)) {
+                case 'I':
+                case 'i':
+                    for(int tableIndex=0; tableIndex<tables[row.value].values.size(); tableIndex++) {
+                        Row dummyRow;
+                        dummyRow.key = tableIndex+1;
+                        dummyRow.value = tables[row.value].values[tableIndex];
+                        ProcessRow(dummyRow, sequenceIndex, columnIndex, synth, KeyToChar(row.key) == 'I');
+                    }
+                    break;
                 case 'N':
-                    synth.voices[voice].PlayNote(NoteToFreq(row.value>>4, row.value & 0xF));
+                    if(triggerNote) {
+                        synth.voices[voice].PlayNote(NoteToFreq(row.value>>4, row.value & 0xF));
+                    }
                     break;
                 case 'A':
                     synth.voices[voice].amp = row.value;
@@ -190,28 +252,46 @@ public:
                     deltaCoef *= deltaCoef;
                     synth.voices[voice].line.risingDelta = (B32_1HZ_DELTA>>8) * deltaCoef;
                     break;
-                case 'F':
-                    synth.voices[voice].modFreqCoef = row.value;
-                    break;
-                case 'f':
-                    synth.voices[voice].modFreqEnvCoef = (s8)row.value;
-                    break;
                 case 'M':
                     synth.voices[voice].modCoef = row.value;
                     break;
                 case 'm':
                     synth.voices[voice].modEnvCoef = (s8)row.value;
                     break;
+                case 'F':
+                    synth.voices[voice].modFreqCoef = row.value;
+                    break;
+                case 'f':
+                    synth.voices[voice].modFreqEnvCoef = (s8)row.value;
+                    break;
+                case 'B':
+                    synth.voices[voice].feedbackCoef = row.value;
+                    break;
+                case 'b':
+                    synth.voices[voice].feedbackEnvCoef = (s8)row.value;
+                    break;
                 case 'p':
                     synth.voices[voice].carFreqEnvCoef = (u8)row.value;
+                    break;
+                case 'c':
+                    synth.voices[voice].ampCurve = (row.value & 0xF0)>>4;
+                    synth.voices[voice].modCurve = (row.value & 0x0F);
                     break;
                 case 'R':
                     synth.voices[voice].verbAmp = (u8)row.value;
                     break;
-                case 'T':
-                    if(row.value > 0) {
-                        synth.metro.delta = METRO_1BPM_DELTA*row.value;
-                    }
+                case 'V':
+                    sequences[sequenceIndex].voice = wrap(row.value, synth.voices.size());
+                    break;
+                case 'J':
+                    sequences[sequenceIndex].columns[columnIndex].index = row.value;
+                    if(KeyToChar(sequences[sequenceIndex].columns[columnIndex].rows[sequences[sequenceIndex].columns[columnIndex].index].key) != 'J')
+                    ProcessRow(
+                        sequences[sequenceIndex].columns[columnIndex].rows[sequences[sequenceIndex].columns[columnIndex].index],
+                        sequenceIndex,
+                        columnIndex,
+                        synth
+                    );
                     break;
                 case 'S':
                     if(sequences[sequenceIndex].columns[columnIndex].lastSubSequence >= 0) {
@@ -222,22 +302,15 @@ public:
                     sequences[row.value].playing = true;
                     sequences[sequenceIndex].columns[columnIndex].lastSubSequence = row.value;
                     break;
-                case 'V':
-                    sequences[sequenceIndex].voice = wrap(row.value, synth.voices.size());
-                    break;
-                case 'B':
-                    synth.voices[voice].feedbackCoef = row.value;
-                    break;
-                case 'b':
-                    synth.voices[voice].feedbackEnvCoef = (s8)row.value;
-                    break;
-                case 'c':
-                    synth.voices[voice].ampCurve = (row.value & 0xF0)>>4;
-                    synth.voices[voice].modCurve = (row.value & 0x0F);
+                case 'T':
+                    if(row.value > 0) {
+                        synth.metro.delta = METRO_1BPM_DELTA*row.value;
+                    }
                     break;
                 default:
                     break;
             }
+            tickProcessed = true;
         }
         return tickProcessed;
     }
@@ -264,8 +337,13 @@ public:
         return tickProcessed;
     }
     int NoteToFreq(u8 octave, u8 note) {
-        while(note>11) { note-=12; octave++; }
-        return NOTE_FREQ_TABLE[wrap(note, 12)]>>(8-octave);
+        int oct = octave-8;
+        while(note>11) { note-=12; oct++; }
+        if(oct >= 0) {
+            return NOTE_FREQ_TABLE[wrap(note, 12)]<<abs(oct);
+        } else {
+            return NOTE_FREQ_TABLE[wrap(note, 12)]>>abs(oct);
+        }
     }
 private:
     static Sequencer * instance;

@@ -177,6 +177,10 @@ public:
         carrier.Reset();
         carrier.SetFreq(freq);
     }
+    void SetNote(int freq) {
+        modulator.SetFreq((freq*modFreqCoef)>>4);
+        carrier.SetFreq(freq);
+    }
     s16 Process() {
         int out = 0;
         if(line.stage != Line::STAGE_IDLE) {
@@ -404,14 +408,14 @@ public:
         voices[voice].PlayNote(freq);
     }
     s16 Process() {
-        s16 out = 0;
-        s16 verbOut = 0;
+        s32 out = 0;
+        s32 verbOut = 0;
         for(int i=0; i<voices.size(); i++) {
             s16 voiceOut = voices[i].Process();
-            out += FPMUL(voiceOut, voices[i].amp, 8);
-            verbOut += FPMUL(voiceOut, voices[i].verbAmp, 8);
+            out += FPMUL(voiceOut, voices[i].amp, 5);
+            verbOut += FPMUL(voiceOut, voices[i].verbAmp, 5);
         }
-        return out + reverb.Process(verbOut);
+        return clip16(clip16(out) + clip16(reverb.Process(clip16(verbOut)>>1)));
     }
 };
 

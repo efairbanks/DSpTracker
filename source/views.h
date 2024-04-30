@@ -13,6 +13,7 @@ using namespace std;
 
 class View {	
 public:
+    virtual void HandleTouchInput(int keys, int held) = 0;
 	virtual void HandleInput(int keys, int held) = 0;
     virtual void Render() = 0;
 };
@@ -25,6 +26,7 @@ class SequencerView {
     int cursorRow = 0;
     u8 currentSequence = 0;
 public:
+    virtual void HandleTouchInput(int keys, int held) {}
     virtual void HandleInput(int keys, int held) {
         touchPosition touchXY;
         touchRead(&touchXY);
@@ -54,8 +56,8 @@ public:
             if(keys & KEY_RIGHT) row.value+=1;
         } else if(held & KEY_X) {
             // modify command under cursor
-            if(keys & KEY_DOWN) row.key-=16;
-            if(keys & KEY_UP) row.key+=16;
+            if(keys & KEY_DOWN) row.key-=4;
+            if(keys & KEY_UP) row.key+=4;
             if(keys & KEY_LEFT) row.key-=1;
             if(keys & KEY_RIGHT) row.key+=1;
         } else if((held & KEY_L) && (held & KEY_R)) {
@@ -122,7 +124,7 @@ public:
                     printf(0, 8*rowIndex, RGB15(31,31,31), "%2d", rowIndex);
                     u16 rowColor = Sequencer::getInstance()->sequences[currentSequence].columns[columnIndex].index == rowIndex ? RGB15(31,31,31) : RGB15(20,20,20);
                     if(rowIndex == cursorRow && columnIndex == cursorCol) rowColor = RGB15(0,0,0);
-                    printf(columnIndex*colPadding+24, rowIndex*8, rowColor, "%1c%02X ", Sequencer::KeyToChar(column.rows[rowIndex].key), column.rows[rowIndex].value);
+                    printf(columnIndex*colPadding+24, rowIndex*8, rowColor, "%1c%02X ", Sequencer::getInstance()->KeyToChar(column.rows[rowIndex].key), column.rows[rowIndex].value);
                     maxRowIndex = std::max(maxRowIndex, rowIndex);
                 }
             }
@@ -130,14 +132,79 @@ public:
     }
 };
 
+class TableView {
+    InstrumentTable copiedTable;
+    u8 currentTable = 0;
+    int currentIndex = 0;
+    int lastTouchY = -1;
+public:
+    virtual void HandleTouchInput(int keys, int held) {
+        InstrumentTable& table = Sequencer::getInstance()->tables[currentTable];
+
+        touchPosition touchXY;
+        touchRead(&touchXY);
+        scanKeys();
+
+        if(keys & KEY_TOUCH) {
+            lastTouchY = touchXY.py;
+            currentIndex = (touchXY.px*table.values.size())/SCREEN_WIDTH;
+        }
+        if(held & KEY_TOUCH) {
+            int touchY = (touchXY.py + lastTouchY*3)>>2;
+            int value = touchY-lastTouchY;
+            table.values[currentIndex] = clip(table.values[currentIndex] - value, 0, 255);
+            lastTouchY = touchY;
+        }
+    }
+    virtual void HandleInput(int keys, int held) {
+        InstrumentTable& table = Sequencer::getInstance()->tables[currentTable];
+
+        touchPosition touchXY;
+        touchRead(&touchXY);
+        scanKeys();
+
+        if(held & KEY_A) {
+            if(keys & KEY_LEFT) table.values[currentIndex]--;
+            if(keys & KEY_RIGHT) table.values[currentIndex]++;
+            if(keys & KEY_DOWN) table.values[currentIndex]-=16;
+            if(keys & KEY_UP) table.values[currentIndex]+=16;
+        } else if((held & KEY_R) || (held & KEY_L)) {
+            if(keys & KEY_LEFT) currentTable--;
+            if(keys & KEY_RIGHT) currentTable++;
+            if(keys & KEY_DOWN) currentTable-=16;
+            if(keys & KEY_UP) currentTable+=16;
+        } else {
+            if(keys & KEY_LEFT) currentIndex = wrap(currentIndex-1, table.values.size());
+            if(keys & KEY_RIGHT) currentIndex = wrap(currentIndex+1, table.values.size());
+        }
+
+        if(keys & KEY_B) copiedTable = Sequencer::getInstance()->tables[currentTable];
+        if(keys & KEY_X) Sequencer::getInstance()->tables[currentTable] = copiedTable;
+    }
+    virtual void Render() {
+        InstrumentTable& table = Sequencer::getInstance()->tables[currentTable];
+        for(int i=0; i<table.values.size(); i++) {
+            u8 key = i+1;
+            u8 value = table.values[i];
+            int boxWidth = SCREEN_WIDTH/table.values.size();
+            printf(i*boxWidth+5, SCREEN_HEIGHT-9, RGB15(31,31,31), "%c", Sequencer::getInstance()->KeyToChar(key));
+            printf(i*boxWidth, 10, RGB15(31,31,31), "%02X", value);
+            glBoxFilled(
+                i*boxWidth+1, 20 + (((SCREEN_HEIGHT-30)*(255-value))>>8),
+                (i+1)*boxWidth-2, SCREEN_HEIGHT-10,
+                i!=currentIndex ? RGB15(31,31,31) : RGB15(26,26,31)
+            );
+        }
+        glBoxFilled(0, 0, SCREEN_WIDTH, 8, RGB15(26,26,31));
+        printf(0, 0, RGB15(0,0,0), "%02X", currentTable);
+    }
+};
+
 class ScopeView {
 public:
+    virtual void HandleTouchInput(int keys, int held) {}
     virtual void HandleInput(int keys, int held) {}
     virtual void Render() {
-        glBoxFilled(0, 0,
-                    SCREEN_WIDTH, SCREEN_HEIGHT,
-                    RGB15(0,0,0));
-
         GraphicsEngine::getInstance()->DrawScope(SoundEngine::getInstance()->scope.buffer, SoundEngine::getInstance()->scope.length, RGB15(20,20,31));
         if(SoundEngine::getInstance()->scope.IsReady()) SoundEngine::getInstance()->scope.Reset();
     }
@@ -145,11 +212,9 @@ public:
 
 class ControlsView {
 public:
+    virtual void HandleTouchInput(int keys, int held) {}
     virtual void HandleInput(int keys, int held) {}
     virtual void Render() {
-        glBoxFilled(0, 0,
-                    SCREEN_WIDTH, SCREEN_HEIGHT,
-                    RGB15(0,0,0));
         printf(8,8, RGB15(31,31,31), "A+DIR:   MODIFY VAL");
         printf(8,16,RGB15(31,31,31), "X+DIR:   MODIFY CMD");
         printf(8,24,RGB15(31,31,31), "R+DIR:   ROW/COL +/-");
@@ -161,11 +226,9 @@ public:
 
 class CommandView {
 public:
+    virtual void HandleTouchInput(int keys, int held) {}
     virtual void HandleInput(int keys, int held) {}
     virtual void Render() {
-        glBoxFilled(0, 0,
-                    SCREEN_WIDTH, SCREEN_HEIGHT,
-                    RGB15(0,0,0));
         printf(8,8, RGB15(31,31,31), "N: PLAY NOTE");
         printf(8,16,RGB15(31,31,31), "E: ENVELOPE SPEED");
         printf(8,24,RGB15(31,31,31), "M: PHASE MODULATION AMOUNT");
@@ -176,6 +239,7 @@ public:
 };
 
 class TextTestView {
+    virtual void HandleTouchInput(int keys, int held) {}
     virtual void HandleInput(int keys, int held) {}
     virtual void Render() {
         printf(0,0, RGB15(31,31,31), "ABCDEFGHIJKLMNOPQRSTUVWXYZ");

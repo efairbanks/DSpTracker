@@ -8,6 +8,16 @@ int wrap(int x, int len) {
     return x;
 }
 
+int clip(int x, int min, int max) {
+    if(x < min) return min;
+    if(x > max) return max;
+    return x;
+}
+
+int clip16(int x) {
+    return clip(x, -32768, 32767);
+}
+
 #define FPMUL(x, y, b) (((x)*(y))>>(b))
 
 #endif UTILS_H

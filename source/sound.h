@@ -62,7 +62,7 @@ private:
 	int len = length;
 	for( ; len; len-- )
 	{
-		int sample = instance->Process();
+		s16 sample = instance->Process();
 		
 		*target++ = sample;
 		*target++ = sample;
