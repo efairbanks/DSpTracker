@@ -179,7 +179,7 @@ public:
         }
 
         if(keys & KEY_B) copiedTable = Sequencer::getInstance()->tables[currentTable];
-        if(keys & KEY_X) Sequencer::getInstance()->tables[currentTable] = copiedTable;
+        if(keys & KEY_Y) Sequencer::getInstance()->tables[currentTable] = copiedTable;
     }
     virtual void Render() {
         InstrumentTable& table = Sequencer::getInstance()->tables[currentTable];
