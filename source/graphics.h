@@ -122,8 +122,8 @@ public:
         s16 sample = buffer[i];
         s16 nextSample = buffer[i+1];
         glLine(
-            i*(SCREEN_WIDTH/length), (SCREEN_HEIGHT>>1) + ((sample*SCREEN_HEIGHT)>>13),
-            (i+1)*(SCREEN_WIDTH/length), (SCREEN_HEIGHT>>1) + ((nextSample*SCREEN_HEIGHT)>>13),
+            i*(SCREEN_WIDTH/length), (SCREEN_HEIGHT>>1) + ((sample*SCREEN_HEIGHT)>>16),
+            (i+1)*(SCREEN_WIDTH/length), (SCREEN_HEIGHT>>1) + ((nextSample*SCREEN_HEIGHT)>>16),
             color
         );
     }

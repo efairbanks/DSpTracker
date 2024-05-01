@@ -192,11 +192,11 @@ public:
             s16 ampEnv = FPMUL(env,0xF-ampCurve,4) + FPMUL(expEnv,ampCurve,4);
             s16 modEnv = FPMUL(env,0xF-modCurve,4) + FPMUL(expEnv,modCurve,4);
 
-            s16 mPhaseMod = FPMUL(lastVal,feedbackCoef,4) + FPMUL(FPMUL(lastVal,modEnv,12),feedbackEnvCoef,4);
-            s16 mFreqMod = FPMUL(modEnv,modFreqEnvCoef,4);
+            s16 mPhaseMod = FPMUL(lastVal,feedbackCoef,5) + FPMUL(FPMUL(lastVal,modEnv,12),feedbackEnvCoef,5);
+            s16 mFreqMod = FPMUL(modEnv,modFreqEnvCoef,5);
             s16 m = modulator.Process(mPhaseMod, mFreqMod);
             s16 cPhaseMod = FPMUL(m,modCoef,4) + FPMUL(FPMUL(modEnv,modEnvCoef,4),m,12);
-            s16 cFreqMod = FPMUL(modEnv,carFreqEnvCoef,4);
+            s16 cFreqMod = FPMUL(modEnv,carFreqEnvCoef,5);
 
             s16 c = carrier.Process(cPhaseMod,cFreqMod);
             lastVal = c;
@@ -415,7 +415,7 @@ public:
             out += FPMUL(voiceOut, voices[i].amp, 5);
             verbOut += FPMUL(voiceOut, voices[i].verbAmp, 5);
         }
-        return clip16(clip16(out) + clip16(reverb.Process(clip16(verbOut)>>1)));
+        return clip16(out + reverb.Process(clip16(verbOut)>>1));
     }
 };
 

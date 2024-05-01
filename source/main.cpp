@@ -20,6 +20,17 @@ int topScreenView = 0;
 int bottomScreenView = 0;
 bool activeScreen = GraphicsEngine::SCREEN_TOP;
 
+typedef enum {
+	DIRPAD_L,
+	DIRPAD_R,
+	DIRPAD_U,
+	DIRPAD_D,
+	DIRPAD_LAST
+} DirPadDir;
+u32 dirPadHeld[DIRPAD_LAST];
+u32 dirPadBitFlag[] = {KEY_LEFT, KEY_RIGHT, KEY_UP, KEY_DOWN};
+
+
 void init() {
 	fatInitDefault();
 	sequencer = Sequencer::getInstance();
@@ -37,8 +48,15 @@ void init() {
 
 void handleInput() {
 	scanKeys();
-	int keys = keysDown();
-	int held = keysHeld();
+	u32 keys = keysDown();
+	u32 held = keysHeld();
+	u32 released = keysUp();
+
+	for(int i=0; i<DIRPAD_LAST; i++) {
+		if(held & dirPadBitFlag[i]) dirPadHeld[i]++;
+		if(released & dirPadBitFlag[i]) dirPadHeld[i] = 0;
+		if(dirPadHeld[i] > 15 && ((dirPadHeld[i]&0x3)==0)) keys = keys | dirPadBitFlag[i];
+	}
 
 	if((held & KEY_L) && (held & KEY_R)) {
 		if(keys & KEY_START) {
