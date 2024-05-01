@@ -227,7 +227,7 @@ public:
             switch(KeyToChar(row.key)) {
                 case 'I':
                 case 'i':
-                    for(int tableIndex=0; tableIndex<tables[row.value].values.size(); tableIndex++) {
+                    for(int tableIndex=tables[row.value].values.size()-1; tableIndex>=0; tableIndex--) {
                         Row dummyRow;
                         dummyRow.key = tableIndex+1;
                         dummyRow.value = tables[row.value].values[tableIndex];
@@ -237,6 +237,8 @@ public:
                 case 'N':
                     if(triggerNote) {
                         synth.voices[voice].PlayNote(NoteToFreq(row.value>>4, row.value & 0xF));
+                    } else {
+                        synth.voices[voice].SetNote(NoteToFreq(row.value>>4, row.value & 0xF));
                     }
                     break;
                 case 'A':
