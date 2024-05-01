@@ -13,8 +13,6 @@ public:
     static SoundEngine * getInstance() {
         if(nullptr == instance) {
             instance = new SoundEngine();
-            //instance->allpass = new Allpass(400, -4020);
-            //instance->lfo.SetFreq(B32_1HZ_DELTA>>8);
 
             // initialize maxmod without any soundbank (unusual setup)
             mm_ds_system sys;
