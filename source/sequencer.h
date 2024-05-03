@@ -68,9 +68,9 @@ public:
         tick = -1;
         for(int i=0; i<length; i++) rows.push_back(Row());
     }
-    void Reset() {
+    void Reset(int indexOffset=-1) {
         tick = -1;
-        index = -1;
+        index = wrap(indexOffset, rows.size());
         lastSubSequence = -1;
     }
     Row& GetRow(int i=-1) {
@@ -93,6 +93,7 @@ class Sequence {
 public:
     bool playing;
     int voice;
+    int subSequenceOffset = 0;
     vector<Column> columns;
     void serialize(ofstream& stream) {
         stream.write((char*)(&playing), sizeof(playing));
@@ -119,8 +120,8 @@ public:
         playing = false;
         voice = 0;
     }
-    void Reset() {
-        for(int i=0; i<columns.size(); i++) columns[i].Reset();
+    void Reset(int indexOffset=-1) {
+        for(int i=0; i<columns.size(); i++) columns[i].Reset(indexOffset);
     }
 };
 
@@ -216,14 +217,14 @@ public:
             return commandChars[key-1];
         }
     }
-    vector<char> commandChars {'N','A','E','e','M','m','F','f','B','b','p','c','R','V','J','S','T','I','i'};
+    vector<char> commandChars {'N','A','E','e','M','m','F','f','B','b','p','c','R','V','J','S','s','T','I','i'};
     bool ProcessRow(Row& row, int sequenceIndex, int columnIndex, Synth& synth, bool triggerNote=true) {
         bool tickProcessed = false;
         if(row.key > 0) {
             Sequence& sequence = sequences[sequenceIndex];
             Column& column = sequence.columns[columnIndex];
             s32 deltaCoef = row.value;
-            int voice = sequence.voice;
+            Voice& voice = synth.voices[sequence.voice];
             switch(KeyToChar(row.key)) {
                 case 'I':
                 case 'i':
@@ -236,73 +237,76 @@ public:
                     break;
                 case 'N':
                     if(triggerNote) {
-                        synth.voices[voice].PlayNote(NoteToFreq(row.value>>4, row.value & 0xF));
+                        voice.PlayNote(NoteToFreq(row.value>>4, row.value & 0xF));
                     } else {
-                        synth.voices[voice].SetNote(NoteToFreq(row.value>>4, row.value & 0xF));
+                        voice.SetNote(NoteToFreq(row.value>>4, row.value & 0xF));
                     }
                     break;
                 case 'A':
-                    synth.voices[voice].amp = row.value;
+                    voice.amp = row.value;
                     break;
                 case 'E':
                     deltaCoef = 0xFF-deltaCoef;
                     deltaCoef *= deltaCoef;
-                    synth.voices[voice].line.fallingDelta = (B32_1HZ_DELTA>>8) * deltaCoef;
+                    voice.line.fallingDelta = (B32_1HZ_DELTA>>8) * deltaCoef;
                     break;
                 case 'e':
                     deltaCoef = 0xFF-deltaCoef;
                     deltaCoef *= deltaCoef;
-                    synth.voices[voice].line.risingDelta = (B32_1HZ_DELTA>>8) * deltaCoef;
+                    voice.line.risingDelta = (B32_1HZ_DELTA>>8) * deltaCoef;
                     break;
                 case 'M':
-                    synth.voices[voice].modCoef = row.value;
+                    voice.modCoef = row.value;
                     break;
                 case 'm':
-                    synth.voices[voice].modEnvCoef = (s8)row.value;
+                    voice.modEnvCoef = (s8)row.value;
                     break;
                 case 'F':
-                    synth.voices[voice].modFreqCoef = row.value;
+                    voice.modFreqCoef = row.value;
                     break;
                 case 'f':
-                    synth.voices[voice].modFreqEnvCoef = (s8)row.value;
+                    voice.modFreqEnvCoef = (s8)row.value;
                     break;
                 case 'B':
-                    synth.voices[voice].feedbackCoef = row.value;
+                    voice.feedbackCoef = row.value;
                     break;
                 case 'b':
-                    synth.voices[voice].feedbackEnvCoef = (s8)row.value;
+                    voice.feedbackEnvCoef = (s8)row.value;
                     break;
                 case 'p':
-                    synth.voices[voice].carFreqEnvCoef = (u8)row.value;
+                    voice.carFreqEnvCoef = (u8)row.value;
                     break;
                 case 'c':
-                    synth.voices[voice].ampCurve = (row.value & 0xF0)>>4;
-                    synth.voices[voice].modCurve = (row.value & 0x0F);
+                    voice.ampCurve = (row.value & 0xF0)>>4;
+                    voice.modCurve = (row.value & 0x0F);
                     break;
                 case 'R':
-                    synth.voices[voice].verbAmp = (u8)row.value;
+                    voice.verbAmp = (u8)row.value;
                     break;
                 case 'V':
-                    sequences[sequenceIndex].voice = wrap(row.value, synth.voices.size());
+                    sequence.voice = wrap(row.value, synth.voices.size());
                     break;
                 case 'J':
-                    sequences[sequenceIndex].columns[columnIndex].index = row.value;
-                    if(KeyToChar(sequences[sequenceIndex].columns[columnIndex].rows[sequences[sequenceIndex].columns[columnIndex].index].key) != 'J')
+                    column.index = row.value;
+                    if(KeyToChar(column.rows[column.index].key) != 'J')
                     ProcessRow(
-                        sequences[sequenceIndex].columns[columnIndex].rows[sequences[sequenceIndex].columns[columnIndex].index],
+                        column.rows[column.index],
                         sequenceIndex,
                         columnIndex,
                         synth
                     );
                     break;
                 case 'S':
-                    if(sequences[sequenceIndex].columns[columnIndex].lastSubSequence >= 0) {
-                        sequences[sequences[sequenceIndex].columns[columnIndex].lastSubSequence].playing = false;
-                        sequences[sequences[sequenceIndex].columns[columnIndex].lastSubSequence].Reset();
+                    if(column.lastSubSequence >= 0) {
+                        sequences[column.lastSubSequence].playing = false;
+                        sequences[column.lastSubSequence].Reset();
                     }
-                    sequences[row.value].Reset();
+                    sequences[row.value].Reset(sequence.subSequenceOffset-1);
                     sequences[row.value].playing = true;
-                    sequences[sequenceIndex].columns[columnIndex].lastSubSequence = row.value;
+                    column.lastSubSequence = row.value;
+                    break;
+                case 's':
+                    sequence.subSequenceOffset = row.value;
                     break;
                 case 'T':
                     if(row.value > 0) {

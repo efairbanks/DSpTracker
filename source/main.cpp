@@ -96,11 +96,11 @@ void handleInput() {
 		}
 	} else {
 		if(activeScreen == GraphicsEngine::SCREEN_BOTTOM) {
-			bottomScreenViews[bottomScreenView]->HandleInput(keys, held);
+			bottomScreenViews[bottomScreenView]->HandleInput(keys, held, released);
 		} else {
-			topScreenViews[topScreenView]->HandleInput(keys, held);
+			topScreenViews[topScreenView]->HandleInput(keys, held, released);
 		}
-		bottomScreenViews[bottomScreenView]->HandleTouchInput(keys, held);
+		bottomScreenViews[bottomScreenView]->HandleTouchInput(keys, held, released);
 	}
 }
 

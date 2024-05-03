@@ -26,8 +26,6 @@ class Cglfont
 	void PrintCentered( int x, int y, const char *text );
 	void PrintCentered( int x, int y, int value );
 	
-	
-	private:
 	glImage     *font_sprite;
 	char		str[256];
 	char		str2[256];

@@ -13,21 +13,22 @@ using namespace std;
 
 class View {	
 public:
-    virtual void HandleTouchInput(u32 keys, u32 held) = 0;
-	virtual void HandleInput(u32 keys, u32 held) = 0;
+    virtual void HandleTouchInput(u32 keys, u32 held, u32 released) = 0;
+	virtual void HandleInput(u32 keys, u32 held, u32 released) = 0;
     virtual void Render() = 0;
 };
 
 class SequencerView {
     Sequence copiedSequence;
     Column copiedColumn;
-    Row copiedRow;
+    vector<Row> copiedRows;
     int cursorCol = 0;
     int cursorRow = 0;
+    int cursorSelectionLength = 1;
     u8 currentSequence = 0;
 public:
-    virtual void HandleTouchInput(u32 keys, u32 held) {}
-    virtual void HandleInput(u32 keys, u32 held) {
+    virtual void HandleTouchInput(u32 keys, u32 held, u32 released) {}
+    virtual void HandleInput(u32 keys, u32 held, u32 released) {
         touchPosition touchXY;
         touchRead(&touchXY);
         scanKeys();
@@ -83,14 +84,46 @@ public:
             if(keys & KEY_UP) currentSequence+=16;
             if(keys & KEY_B) copiedSequence = sequence;
             if(keys & KEY_Y) Sequencer::getInstance()->sequences[currentSequence] = copiedSequence;
+        } else if(held & KEY_B) {
+            if(keys & KEY_UP) {
+                if(cursorSelectionLength > 1) {
+                    cursorSelectionLength--;
+                }
+            }
+            if(keys & KEY_DOWN) {
+                if(cursorRow + cursorSelectionLength < column.rows.size()) {
+                    cursorSelectionLength++;
+                }
+            }
+            if(keys & KEY_LEFT) {
+                cursorSelectionLength = max(1, cursorSelectionLength>>1);
+            }
+            if(keys & KEY_RIGHT) {
+                cursorSelectionLength = min(cursorSelectionLength<<1, ((int)(column.rows.size())) - cursorRow);
+            }
         } else {
             // move cursor, wrapping
             if(keys & KEY_LEFT) cursorCol = wrap(cursorCol-1, numCols);
             if(keys & KEY_RIGHT) cursorCol = wrap(cursorCol+1, numCols);
             if(keys & KEY_DOWN) cursorRow = wrap(cursorRow+1, numRows);
             if(keys & KEY_UP) cursorRow = wrap(cursorRow-1, numRows);
-            if(keys & KEY_B) copiedRow = row;
-            if(keys & KEY_Y) column.rows[cursorRow] = copiedRow;
+            if(released & KEY_B) {
+                copiedRows.clear();
+                for(int i=0; i<cursorSelectionLength; i++) {
+                    if(i + cursorRow < column.rows.size()) {
+                        copiedRows.push_back(column.rows[cursorRow+i]);
+                    }
+                }
+            }
+            if(keys & KEY_Y) {
+                for(int i=0; i<copiedRows.size(); i++) {
+                    if(i+cursorRow < column.rows.size()) {
+                        column.rows[i+cursorRow] = copiedRows[i];
+                    } else {
+                        column.rows.push_back(copiedRows[i]);
+                    }
+                }
+            }
         }
         cursorCol = max(0, min(cursorCol, (int)(sequence.columns.size()-1)));
         cursorRow = max(0, min(cursorRow, (int)(column.rows.size()-1)));
@@ -100,32 +133,36 @@ public:
 
         int colPadding = 26;
 
+        // draw top bar
         glBoxFilled(0, SCREEN_HEIGHT-8, SCREEN_WIDTH, SCREEN_HEIGHT, RGB15(31,26,26));
-        printf(0, SCREEN_HEIGHT-8, RGB15(0,0,0), "%02X", currentSequence);
+        printhex(0, SCREEN_HEIGHT-8, RGB15(0,0,0), currentSequence);
         for(int i=0; i<Sequencer::getInstance()->sequences[currentSequence].columns.size(); i++) {
             Column& column = Sequencer::getInstance()->sequences[currentSequence].columns[i];
-            printf(24+26*i, SCREEN_HEIGHT-8, RGB15(0,0,0), "%2X", column.ticksPerStep);
+            printhex(24+26*i, SCREEN_HEIGHT-8, RGB15(0,0,0), column.ticksPerStep);
         }
 
         // render seq index line separator
-        glLine(	18, 0, 17, SCREEN_HEIGHT-1-8, RGB15(31,31,31));
+        glLine(18, 0, 17, SCREEN_HEIGHT-1-8, RGB15(31,31,31));
         // render seq
         for(int columnIndex=0; columnIndex<Sequencer::getInstance()->sequences[currentSequence].columns.size(); columnIndex++) {
             Column column = Sequencer::getInstance()->sequences[currentSequence].columns[columnIndex];
             for(int screenRow=0; screenRow<23; screenRow++) {
                 int rowIndex = screenRow + max(0, cursorRow-22);
-                if(columnIndex == cursorCol && rowIndex == cursorRow) {
-                    glBoxFilled(
-                        cursorCol*colPadding+24, screenRow*8,
-                        cursorCol*colPadding+49, (screenRow+1)*8,
-                        RGB15(25,25,25)
-                    );
-                }
                 if(rowIndex<column.rows.size()) {
                     printf(0, 8*screenRow, RGB15(31,31,31), "%2d", rowIndex);
+                    // text color based on whether step is being played
                     u16 rowColor = Sequencer::getInstance()->sequences[currentSequence].columns[columnIndex].index == rowIndex ? RGB15(31,31,31) : RGB15(20,20,20);
-                    if(rowIndex == cursorRow && columnIndex == cursorCol) rowColor = RGB15(0,0,0);
-                    printf(columnIndex*colPadding+24, screenRow*8, rowColor, "%1c%02X ", Sequencer::getInstance()->KeyToChar(column.rows[rowIndex].key), column.rows[rowIndex].value);
+                    // invert text color if selected by cursor
+                    if((rowIndex >= cursorRow && rowIndex < (cursorRow+cursorSelectionLength)) && columnIndex == cursorCol) {
+                        rowColor = RGB15(0,0,0);
+                        glBoxFilled(
+                            cursorCol*colPadding+24, screenRow*8,
+                            cursorCol*colPadding+49, (screenRow+1)*8,
+                            RGB15(25,25,25)
+                        );
+                    }
+                    // draw row
+                    printcmd(columnIndex*colPadding+24, screenRow*8, rowColor, Sequencer::getInstance()->KeyToChar(column.rows[rowIndex].key), column.rows[rowIndex].value);
                 }
             }
         }
@@ -138,7 +175,7 @@ class TableView {
     int currentIndex = 0;
     int lastTouchY = -1;
 public:
-    virtual void HandleTouchInput(u32 keys, u32 held) {
+    virtual void HandleTouchInput(u32 keys, u32 held, u32 released) {
         InstrumentTable& table = Sequencer::getInstance()->tables[currentTable];
 
         touchPosition touchXY;
@@ -156,7 +193,7 @@ public:
             lastTouchY = touchY;
         }
     }
-    virtual void HandleInput(u32 keys, u32 held) {
+    virtual void HandleInput(u32 keys, u32 held, u32 released) {
         InstrumentTable& table = Sequencer::getInstance()->tables[currentTable];
 
         touchPosition touchXY;
@@ -202,8 +239,8 @@ public:
 
 class ScopeView {
 public:
-    virtual void HandleTouchInput(u32 keys, u32 held) {}
-    virtual void HandleInput(u32 keys, u32 held) {}
+    virtual void HandleTouchInput(u32 keys, u32 held, u32 released) {}
+    virtual void HandleInput(u32 keys, u32 held, u32 released) {}
     virtual void Render() {
         GraphicsEngine::getInstance()->DrawScope(SoundEngine::getInstance()->scope.buffer, SoundEngine::getInstance()->scope.length, RGB15(20,20,31));
         if(SoundEngine::getInstance()->scope.IsReady()) SoundEngine::getInstance()->scope.Reset();
@@ -212,8 +249,8 @@ public:
 
 class ControlsView {
 public:
-    virtual void HandleTouchInput(u32 keys, u32 held) {}
-    virtual void HandleInput(u32 keys, u32 held) {}
+    virtual void HandleTouchInput(u32 keys, u32 held, u32 released) {}
+    virtual void HandleInput(u32 keys, u32 held, u32 released) {}
     virtual void Render() {
         printf(8,8, RGB15(31,31,31), "A+DIR:   MODIFY VAL");
         printf(8,16,RGB15(31,31,31), "X+DIR:   MODIFY CMD");
@@ -226,8 +263,8 @@ public:
 
 class CommandView {
 public:
-    virtual void HandleTouchInput(u32 keys, u32 held) {}
-    virtual void HandleInput(u32 keys, u32 held) {}
+    virtual void HandleTouchInput(u32 keys, u32 held, u32 released) {}
+    virtual void HandleInput(u32 keys, u32 held, u32 released) {}
     virtual void Render() {
         printf(8,8, RGB15(31,31,31), "N: PLAY NOTE");
         printf(8,16,RGB15(31,31,31), "E: ENVELOPE SPEED");
@@ -239,8 +276,8 @@ public:
 };
 
 class TextTestView {
-    virtual void HandleTouchInput(u32 keys, u32 held) {}
-    virtual void HandleInput(u32 keys, u32 held) {}
+    virtual void HandleTouchInput(u32 keys, u32 held, u32 released) {}
+    virtual void HandleInput(u32 keys, u32 held, u32 released) {}
     virtual void Render() {
         printf(0,0, RGB15(31,31,31), "ABCDEFGHIJKLMNOPQRSTUVWXYZ");
         printf(0,16, RGB15(31,31,31), "abcdefghijklmnopqrstuvwxyz");

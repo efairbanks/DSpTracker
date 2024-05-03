@@ -148,4 +148,19 @@ void printf(int x, int y, u16 color, const char * format, ... )
   va_end (args);
 }
 
+void printcmd(int x, int y, u16 color, char cmd, u8 val) {
+    glImage* fontSprite = GraphicsEngine::getInstance()->Font.font_sprite;
+    glColor(color);
+		glSprite( x,    y, GL_FLIP_NONE, &(fontSprite[cmd-32]));
+    glSprite( x+8,  y, GL_FLIP_NONE, &(fontSprite[((val&0xF0)>>4) > 9 ? (23+((val&0xF0)>>4)) : (16+((val&0xF0)>>4))]));
+    glSprite( x+16, y, GL_FLIP_NONE, &(fontSprite[(val&0xF) > 9 ? (23+(val&0xF)) : (16+(val&0xF))]));
+}
+
+void printhex(int x, int y, u16 color, u8 val) {
+    glImage* fontSprite = GraphicsEngine::getInstance()->Font.font_sprite;
+    glColor(color);
+    glSprite( x,   y, GL_FLIP_NONE, &(fontSprite[((val&0xF0)>>4) > 9 ? (23+((val&0xF0)>>4)) : (16+((val&0xF0)>>4))]));
+    glSprite( x+8, y, GL_FLIP_NONE, &(fontSprite[(val&0xF) > 9 ? (23+(val&0xF)) : (16+(val&0xF))]));
+}
+
 #endif
