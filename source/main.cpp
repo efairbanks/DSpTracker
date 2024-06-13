@@ -42,8 +42,9 @@ void init() {
 	bottomScreenViews.push_back((View*)(new TableView));
 	bottomScreenViews.push_back((View*)(new ScopeView));
 	bottomScreenViews.push_back((View*)(new SequencerView()));
-	bottomScreenViews.push_back((View*)(new ControlsView));
-	bottomScreenViews.push_back((View*)(new CommandView));
+	bottomScreenViews.push_back((View*)(new SaveLoadView));
+	//bottomScreenViews.push_back((View*)(new ControlsView));
+	//bottomScreenViews.push_back((View*)(new CommandView));
 }
 
 void handleInput() {
@@ -56,25 +57,6 @@ void handleInput() {
 		if(held & dirPadBitFlag[i]) dirPadHeld[i]++;
 		if(released & dirPadBitFlag[i]) dirPadHeld[i] = 0;
 		if(dirPadHeld[i] > 15 && ((dirPadHeld[i]&0x3)==0)) keys = keys | dirPadBitFlag[i];
-	}
-
-	if((held & KEY_L) && (held & KEY_R)) {
-		if(keys & KEY_START) {
-			ofstream ostream;
-			ostream.open("trackersave.bin", ofstream::binary);
-			ostream.clear();
-			ostream.seekp(0);
-			sequencer->serialize(ostream);
-			ostream.close();
-		}
-		if(keys & KEY_SELECT) {
-			ifstream istream;
-			istream.open("trackersave.bin", ifstream::binary);
-			istream.clear();
-			istream.seekg(0);
-			sequencer->deserialize(istream);
-			istream.close();
-		}
 	}
 
 	if(held & KEY_SELECT) {
@@ -94,14 +76,14 @@ void handleInput() {
 				topScreenView = wrap(topScreenView+1, topScreenViews.size());
 			}
 		}
-	} else {
-		if(activeScreen == GraphicsEngine::SCREEN_BOTTOM) {
-			bottomScreenViews[bottomScreenView]->HandleInput(keys, held, released);
-		} else {
-			topScreenViews[topScreenView]->HandleInput(keys, held, released);
-		}
-		bottomScreenViews[bottomScreenView]->HandleTouchInput(keys, held, released);
 	}
+
+	if(activeScreen == GraphicsEngine::SCREEN_BOTTOM) {
+		bottomScreenViews[bottomScreenView]->HandleInput(keys, held, released);
+	} else {
+		topScreenViews[topScreenView]->HandleInput(keys, held, released);
+	}
+	bottomScreenViews[bottomScreenView]->HandleTouchInput(keys, held, released);
 }
 
 void drawTopScreen() {

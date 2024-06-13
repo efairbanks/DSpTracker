@@ -340,6 +340,7 @@ public:
                 }
             }
         }
+
         return tickProcessed;
     }
     int NoteToFreq(u8 octave, u8 note) {
@@ -350,6 +351,28 @@ public:
         } else {
             return NOTE_FREQ_TABLE[wrap(note, 12)]>>abs(oct);
         }
+    }
+    void Stop() {
+        for(int i=0; i<sequences.size(); i++) {
+            sequences[i].playing = false;
+            sequences[i].Reset();
+        }
+        playing = false;
+    }
+    void StopSequence(int seq) {
+        for(int i=0; i<sequences[seq].columns.size(); i++) {
+            int lastSubSequence = sequences[seq].columns[i].lastSubSequence;
+            if(lastSubSequence > -1) {
+                StopSequence(lastSubSequence);
+            }
+        }
+        sequences[seq].playing = false;
+        sequences[seq].Reset();
+    }
+    void StartSequence(int seq, int row=-1) {
+        if(row >= 0) sequences[seq].Reset(row-1);
+        sequences[seq].playing = true;
+        playing = true;
     }
 private:
     static Sequencer * instance;

@@ -4,6 +4,7 @@
 #include <nds.h>
 #include <gl2d.h>
 #include <stdio.h>
+#include <fat.h>
 
 #include "graphics.h"
 #include "sound.h"
@@ -33,21 +34,12 @@ public:
         touchRead(&touchXY);
         scanKeys();
 
-        Sequence& sequence = Sequencer::getInstance()->sequences[currentSequence];
+        Sequencer* sequencer = Sequencer::getInstance();
+        Sequence& sequence = sequencer->sequences[currentSequence];
         Column& column = sequence.columns[cursorCol];
         Row& row = column.rows[cursorRow];
         int numCols = sequence.columns.size();
         int numRows = column.rows.size();
-
-        if((held & KEY_L) && (keys & KEY_START)) {
-            Sequencer::getInstance()->Reset();
-        } else if(keys & KEY_START) {
-            if(sequence.playing) {
-                sequence.playing = false;
-            } else {
-                sequence.playing = true;
-            }
-        }
 
         if(held & KEY_A) {
             // modify value under cursor
@@ -67,6 +59,9 @@ public:
             if(keys & KEY_LEFT) column.ticksPerStep--;
             if(keys & KEY_RIGHT) column.ticksPerStep++;
         } else if(held & KEY_R) {
+            if(keys & KEY_START) {
+                sequencer->StartSequence(currentSequence, cursorRow);
+            }
             // add/subtract columns
             if((keys & KEY_LEFT) && sequence.columns.size() > 1) sequence.columns.pop_back();
             if(keys & KEY_RIGHT) sequence.columns.push_back(Column(1));
@@ -75,8 +70,14 @@ public:
             if((keys & KEY_UP) && column.rows.size() > 1) column.rows.pop_back();
             if(keys & KEY_B) copiedColumn = column;
             if(keys & KEY_Y) sequence.columns[cursorCol] = copiedColumn;
-
         } else if(held & KEY_L) {
+            if(keys & KEY_START) {
+                if(sequence.playing) {
+                    sequencer->StopSequence(currentSequence);
+                } else {
+                    sequencer->StartSequence(currentSequence);
+                }
+            }
             // switch sequence
             if(keys & KEY_LEFT) currentSequence--;
             if(keys & KEY_RIGHT) currentSequence++;
@@ -102,6 +103,13 @@ public:
                 cursorSelectionLength = min(cursorSelectionLength<<1, ((int)(column.rows.size())) - cursorRow);
             }
         } else {
+            if(keys & KEY_START) {
+                if(sequencer->playing) {
+                    sequencer->Stop();
+                } else {
+                    sequencer->StartSequence(currentSequence);
+                }
+            }
             // move cursor, wrapping
             if(keys & KEY_LEFT) cursorCol = wrap(cursorCol-1, numCols);
             if(keys & KEY_RIGHT) cursorCol = wrap(cursorCol+1, numCols);
@@ -151,7 +159,10 @@ public:
                 if(rowIndex<column.rows.size()) {
                     printf(0, 8*screenRow, RGB15(31,31,31), "%2d", rowIndex);
                     // text color based on whether step is being played
-                    u16 rowColor = Sequencer::getInstance()->sequences[currentSequence].columns[columnIndex].index == rowIndex ? RGB15(31,31,31) : RGB15(20,20,20);
+                    u16 rowColor = RGB15(20,20,20);
+                    if(Sequencer::getInstance()->sequences[currentSequence].playing && Sequencer::getInstance()->sequences[currentSequence].columns[columnIndex].index == rowIndex) {
+                        rowColor =  RGB15(31,31,31);
+                    }
                     // invert text color if selected by cursor
                     if((rowIndex >= cursorRow && rowIndex < (cursorRow+cursorSelectionLength)) && columnIndex == cursorCol) {
                         rowColor = RGB15(0,0,0);
@@ -229,10 +240,10 @@ public:
             glBoxFilled(
                 i*boxWidth+1, 20 + (((SCREEN_HEIGHT-30)*(255-value))>>8),
                 (i+1)*boxWidth-2, SCREEN_HEIGHT-10,
-                i!=currentIndex ? RGB15(31,31,31) : RGB15(26,26,31)
+                i!=currentIndex ? RGB15(31,31,31) : RGB15(22,22,31)
             );
         }
-        glBoxFilled(0, 0, SCREEN_WIDTH, 8, RGB15(26,26,31));
+        glBoxFilled(0, 0, SCREEN_WIDTH, 8, RGB15(22,22,31));
         printf(0, 0, RGB15(0,0,0), "%02X", currentTable);
     }
 };
@@ -272,6 +283,37 @@ public:
         printf(8,32,RGB15(31,31,31), "F: PHASE MODULATION FREQUENCY");
         printf(8,40,RGB15(31,31,31), "T: TEMPO");
         printf(8,48,RGB15(31,31,31), "S: PLAY SEQUENCE");
+    }
+};
+
+class SaveLoadView {
+    virtual void HandleTouchInput(u32 keys, u32 held, u32 released) {
+        if(keys & KEY_TOUCH) {
+            touchPosition touchXY;
+            touchRead(&touchXY);
+            if(touchXY.py < SCREEN_HEIGHT>>1) {
+                ofstream ostream;
+                ostream.open("trackersave.bin", ofstream::binary);
+                ostream.clear();
+                ostream.seekp(0);
+                Sequencer::getInstance()->serialize(ostream);
+                ostream.close();
+            } else {
+                ifstream istream;
+                istream.open("trackersave.bin", ifstream::binary);
+                istream.clear();
+                istream.seekg(0);
+                Sequencer::getInstance()->deserialize(istream);
+                istream.close();
+            }
+        }
+    }
+    virtual void HandleInput(u32 keys, u32 held, u32 released) {}
+    virtual void Render() {
+        glBoxFilled(8, 8, SCREEN_WIDTH-8, SCREEN_HEIGHT/2-4, RGB15(31,22,22));
+        printf((SCREEN_WIDTH>>1)-20,SCREEN_HEIGHT/4-4, RGB15(0,0,0), "SAVE");
+        glBoxFilled(8, SCREEN_HEIGHT/2+8, SCREEN_WIDTH-8, SCREEN_HEIGHT/2-8+SCREEN_HEIGHT/2, RGB15(22,22,31));
+        printf((SCREEN_WIDTH>>1)-20,SCREEN_HEIGHT*3/4-4, RGB15(0,0,0), "LOAD");
     }
 };
 
