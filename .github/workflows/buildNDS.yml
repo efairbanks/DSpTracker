@@ -24,4 +24,5 @@ jobs:
           files: |
             DSpTracker.nds
             trackersave.bin
+            DSpTrackerManual.pdf
         
